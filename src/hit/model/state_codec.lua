@@ -1,4 +1,11 @@
+local idea = require("hit.model.idea")
 local codec = {}
+
+local function name_is_valid(name)
+  return name ~= ""
+    and name == name:match("^%s*(.-)%s*$")
+    and not name:find("[%z\1-\31\127]")
+end
 
 local function escape(value)
   return (value:gsub("([^A-Za-z0-9%-%._~])", function(character)
@@ -42,14 +49,17 @@ function codec.encode(state)
   end
   assert(count == #state.ideas, "state ideas must be contiguous")
 
+  local ids = {}
   for _, current in ipairs(state.ideas) do
     assert(type(current) == "table", "state idea must be table")
-    assert(type(current.id) == "string" and current.id ~= "", "state idea id must be non-empty string")
-    assert(type(current.name) == "string" and current.name ~= "", "state idea name must be non-empty string")
+    assert(idea.guid_is_valid(current.id), "state idea id must be GUID")
+    assert(not ids[current.id], "state idea id must be unique")
+    assert(type(current.name) == "string" and name_is_valid(current.name), "state idea name must be valid string")
     assert(
-      type(current.source_item_guid) == "string" and current.source_item_guid ~= "",
-      "state source_item_guid must be non-empty string"
+      idea.guid_is_valid(current.source_item_guid),
+      "state source_item_guid must be GUID"
     )
+    ids[current.id] = true
     records[#records + 1] = table.concat({
       escape(current.id),
       escape(current.name),
@@ -64,6 +74,12 @@ function codec.decode(value)
   if value == nil or value == "" then
     return { version = 1, ideas = {} }
   end
+  if type(value) == "string" then
+    local version = value:match("^(%d+)$") or value:match("^(%d+)|")
+    if version and version ~= "1" then
+      return nil, "state_version_unsupported"
+    end
+  end
   if type(value) ~= "string" or value == "1|" or value:sub(1, 2) ~= "1|" or value:sub(-1) == "|" then
     if value == "1" then
       return { version = 1, ideas = {} }
@@ -73,7 +89,6 @@ function codec.decode(value)
 
   local ideas = {}
   local ids = {}
-  local sources = {}
   for record in (value:sub(3) .. "|"):gmatch("(.-)|") do
     local encoded_id, encoded_name, encoded_source = record:match("^([^;]*);([^;]*);([^;]*)$")
     if not encoded_id then
@@ -84,20 +99,16 @@ function codec.decode(value)
     local name = unescape(encoded_name)
     local source_item_guid = unescape(encoded_source)
     if
-      not id
-      or id == ""
+      not idea.guid_is_valid(id)
       or not name
-      or name == ""
-      or not source_item_guid
-      or source_item_guid == ""
+      or not name_is_valid(name)
+      or not idea.guid_is_valid(source_item_guid)
       or ids[id]
-      or sources[source_item_guid]
     then
       return nil, "state_invalid"
     end
 
     ids[id] = true
-    sources[source_item_guid] = true
     ideas[#ideas + 1] = {
       id = id,
       name = name,
