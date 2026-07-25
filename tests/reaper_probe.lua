@@ -1,3 +1,4 @@
+-- Verified 2026-07-25: REAPER 7.77/macOS-arm64, ReaImGui 0.10.0.5, Dear ImGui 1.92.1.
 local output = assert(io.open("/tmp/hit-reaper-probe.txt", "w"))
 output:write("reaper_version\t", reaper.GetAppVersion(), "\n")
 

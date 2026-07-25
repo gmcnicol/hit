@@ -4,13 +4,6 @@
 -- @about
 --   Structural composition environment for REAPER.
 
-local script_source = debug.getinfo(1, "S").source
-local script_dir = script_source:match("^@(.+[\\/])[^\\/]+$")
-assert(script_dir, "HIT must run from a saved script")
-
-package.path = script_dir .. "?.lua;" .. script_dir .. "?/init.lua;" .. package.path
-
-local lifecycle = require("hit.lifecycle")
 local app = reaper
 
 local ACTION_RELAUNCH_AND_TOGGLE_ON = 1 | 2 | 4
@@ -21,11 +14,6 @@ local REAIMGUI_INSTALL_MESSAGE = table.concat({
   "",
   "Install ReaImGui through ReaPack's default ReaTeam Extensions repository, then run HIT again.",
 }, "\n")
-
-app.set_action_options(ACTION_RELAUNCH_AND_TOGGLE_ON)
-app.atexit(function()
-  app.set_action_options(ACTION_TOGGLE_OFF)
-end)
 
 local function show_expected_error(message)
   app.ShowMessageBox(message, "HIT", 0)
@@ -49,7 +37,7 @@ local function load_imgui()
   return result
 end
 
-local function start()
+local function start(lifecycle)
   local support = lifecycle.host_support(
     app.GetAppVersion(),
     app.APIExists("ImGui_GetBuiltinPath")
@@ -64,6 +52,11 @@ local function start()
     return
   end
 
+  app.atexit(function()
+    app.set_action_options(ACTION_TOGGLE_OFF)
+  end)
+  app.set_action_options(ACTION_RELAUNCH_AND_TOGGLE_ON)
+
   local ImGui = load_imgui()
   if not ImGui then
     show_expected_error(REAIMGUI_INSTALL_MESSAGE)
@@ -75,6 +68,7 @@ local function start()
 
   local context_flags = ImGui.ConfigFlags_NavEnableKeyboard | ImGui.ConfigFlags_DockingEnable
   local context = ImGui.CreateContext("HIT", context_flags)
+  local focus = true
   local open = true
 
   local function frame()
@@ -93,6 +87,10 @@ local function start()
     end
 
     ImGui.PushFont(context, nil, FONT_SIZE)
+    if focus then
+      ImGui.SetNextWindowFocus(context)
+      focus = false
+    end
     ImGui.SetNextWindowSize(context, 520, 220, ImGui.Cond_FirstUseEver)
     local visible
     visible, open = ImGui.Begin(context, "HIT - " .. project_name .. "###HIT", open)
@@ -133,7 +131,16 @@ local function start()
   app.defer(loop)
 end
 
-local ok, trace = xpcall(start, debug.traceback)
+local function main()
+  local script_source = debug.getinfo(1, "S").source
+  local script_dir = script_source:match("^@(.+[\\/])[^\\/]+$")
+  assert(script_dir, "HIT must run from a saved script")
+
+  package.path = script_dir .. "?.lua;" .. script_dir .. "?/init.lua;" .. package.path
+  start(require("hit.lifecycle"))
+end
+
+local ok, trace = xpcall(main, debug.traceback)
 if not ok then
   show_unexpected_error(trace)
 end
