@@ -36,3 +36,23 @@ Do not create a speculative backlog for later victories unless explicitly asked.
 Prefer thin vertical slices that create a musical or creative outcome.
 
 Infrastructure is only complete when it enables the stated Victory Condition and its Evidence of Victory.
+
+## Writing
+
+Use the installed `caveman` skill at full intensity by default. Keep it active until the user says `stop caveman` or `normal mode`.
+
+Use plain English unless the user requests another language. Do not insert stray non-English words, playful filler or decorative text.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs use GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default triage vocabulary is used. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repository uses a single-context domain layout. See `docs/agents/domain.md`.
