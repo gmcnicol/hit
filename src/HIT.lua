@@ -15,6 +15,7 @@ local app = reaper
 
 local ACTION_RELAUNCH_AND_TOGGLE_ON = 1 | 2 | 4
 local ACTION_TOGGLE_OFF = 8
+local FONT_SIZE = 18
 local REAIMGUI_INSTALL_MESSAGE = table.concat({
   "HIT requires ReaImGui 0.10.",
   "",
@@ -91,6 +92,7 @@ local function start()
       project_name = "Unsaved Project"
     end
 
+    ImGui.PushFont(context, nil, FONT_SIZE)
     ImGui.SetNextWindowSize(context, 520, 220, ImGui.Cond_FirstUseEver)
     local visible
     visible, open = ImGui.Begin(context, "HIT - " .. project_name .. "###HIT", open)
@@ -112,6 +114,7 @@ local function start()
     end
 
     ImGui.End(context)
+    ImGui.PopFont(context)
     return open
   end
 
