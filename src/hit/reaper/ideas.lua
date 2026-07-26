@@ -9,6 +9,7 @@ local STATE_PARAMETER = "P_EXT:HIT_STATE_V1"
 local GRAMMAR_STATE_PARAMETER = "P_EXT:HIT_STATE_V2"
 
 ---@class HitSourceFacts
+---@field source_item_guid string?
 ---@field status "available"|"unavailable"|"missing"|"ambiguous"
 ---@field item_name string?
 ---@field take_name string?

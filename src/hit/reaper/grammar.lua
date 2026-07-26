@@ -28,6 +28,7 @@ local function restore_parameter(master, parameter, found, value)
   return restored_found == found and restored_value == (found and value or "")
 end
 
+---@return HitClassificationPort
 function adapter.port(project)
   local port = {}
 
@@ -272,10 +273,18 @@ function adapter.port(project)
   return port
 end
 
+---@param idea_id string
+---@return HitPhrasesView? view
+---@return string? error_code
 function adapter.open(project, idea_id)
   return classification.open(adapter.port(project), idea_id)
 end
 
+---@param idea_id string
+---@param command HitClassificationCommand
+---@return HitPhrasesView? view
+---@return string? error_code
+---@return table? outcome
 function adapter.execute(project, idea_id, command)
   return classification.execute(adapter.port(project), idea_id, command)
 end
