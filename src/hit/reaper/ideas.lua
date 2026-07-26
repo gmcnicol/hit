@@ -244,8 +244,8 @@ function ideas.load(project)
       row.source_status = "ambiguous"
     elseif item then
       local facts = item_source_facts(item)
-      for key, value in pairs(facts) do
-        row[key == "status" and "source_status" or key] = value
+      for key, fact in pairs(facts) do
+        row[key == "status" and "source_status" or key] = fact
       end
     end
     view.ideas[#view.ideas + 1] = row

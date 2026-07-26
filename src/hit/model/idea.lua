@@ -2,8 +2,7 @@ local idea = {}
 
 function idea.guid_is_valid(value)
   return type(value) == "string"
-    and value:match("^%{%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x%}$")
-      ~= nil
+    and value:match("^%{%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x%}$") ~= nil
 end
 
 function idea.validate_name(proposed_name)
