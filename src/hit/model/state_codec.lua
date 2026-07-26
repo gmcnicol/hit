@@ -36,6 +36,9 @@ local function unescape(value)
   end))
 end
 
+codec.escape = escape
+codec.unescape = unescape
+
 function codec.encode(state)
   assert(type(state) == "table", "state must be table")
   assert(state.version == 1, "state version must be 1")

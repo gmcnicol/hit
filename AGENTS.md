@@ -37,6 +37,14 @@ Prefer thin vertical slices that create a musical or creative outcome.
 
 Infrastructure is only complete when it enables the stated Victory Condition and its Evidence of Victory.
 
+## ReaImGui
+
+Keep every window's ImGui identity stable. When its visible title changes between views, append a constant `###window_id`; otherwise ReaImGui treats each title as a separate window and restores unrelated positions.
+
+Let immediate-mode content determine panel and window height. Use auto-resizing child panels for visual grouping; do not guess fixed child heights or create nested scrollbars for non-scrolling content.
+
+In ReaImGui, `Begin` and `BeginChild` automatically close themselves when they return false. Call `End` or `EndChild` only when the matching call returned true, or the window stack will be corrupted.
+
 ## Writing
 
 Use the installed `caveman` skill at full intensity by default. Keep it active until the user says `stop caveman` or `normal mode`.

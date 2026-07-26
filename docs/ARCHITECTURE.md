@@ -143,6 +143,34 @@ Stable project, Idea, component, occurrence, source and Build identities should 
 
 The detailed storage design belongs in the victory specification produced before implementation.
 
+### Deployed project records
+
+Victory 1 remains stored unchanged in `P_EXT:HIT_STATE_V1` on the project master track.
+
+Victory 2 adds `P_EXT:HIT_STATE_V2` beside V1. Opening a V1-only Idea projects it in memory as Main A without writing. The first explicit Grammar mutation writes complete V2 state while preserving V1. Once valid V2 exists, it is authoritative for Grammar. Invalid or newer V2 state is read-only.
+
+V2 persists Idea, Component and Source Reference identities, fixed Phrase Families, Variant labels, names, optional Intensity, defaults, family grammar, complete Variant overrides and dismissed recovery fingerprints. Track, item and take names, source kind, position, duration and availability remain live provenance.
+
+## Victory 2 classification flow
+
+```text
+ReaImGui Phrases view
+        ↓ musician command
+Classification application service
+        ↓ pure state transition
+Phrase Grammar model
+        ↓ validated V2 state
+REAPER project port
+        ↓ one native undo transaction
+Master-track metadata and, for HIT Split only, source topology
+```
+
+The application service and Phrase Grammar model use plain Lua. Direct REAPER calls remain in the project port.
+
+HIT Split is the only Victory 2 classification command that changes Source Item Topology. It splits the selected Variant source at REAPER's edit cursor, keeps the original Component and item GUID on the left, reacquires both items by GUID, writes V2 metadata in the same native undo block and restores the prior item chunk plus metadata if the transaction fails.
+
+Ordinary REAPER splits remain musician-owned. The adapter compares project revisions and item topology, requiring adjacency, matching active-take source, compatible source offsets and the shortened known boundary before exposing a candidate. Recovery never attaches automatically.
+
 ## Non-destructive generation
 
 Every generated item must carry a Build identity.

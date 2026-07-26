@@ -18,17 +18,9 @@ The broader campaign continues from composition into production planning and the
 
 ## Current victory
 
-**Victory 0 — Establish the campaign**
+**Victory 2 — One performance reveals its grammar**
 
-Create a durable product foundation that Codex can use to derive detailed specifications, missions and implementation plans without losing the project philosophy.
-
-The first musical victory is:
-
-> One recorded idea becomes a convincing evolving passage.
-
-The first major product victory is:
-
-> Four recorded sections become several genuinely compelling arrangement suggestions.
+Split or collect a musician's source items, classify them as Variants within Pickup, Main, Turnaround and Ending families, and describe the Idea's Phrase Grammar without replacing normal REAPER editing or transport.
 
 ## Read first
 
@@ -66,3 +58,21 @@ Finished YouTube video
 ```
 
 The current repository is focused on the **Composition Mapper**. Production Mapper and Afterimage integration come later.
+
+## Development checks
+
+Run pure Lua and in-memory REAPER adapter checks:
+
+```sh
+for test in tests/*_test.lua; do lua "$test"; done
+```
+
+Run the disposable two-phase live REAPER proof:
+
+```sh
+tests/run_reaper_idea_probe.sh
+```
+
+The live proof creates only `/tmp/hit-reaper-idea-probe.rpp` and related `/tmp` evidence files. Never run its Lua script directly in a working project.
+
+See [Victory 2 manual acceptance](docs/VICTORY_2_MANUAL_TEST.md) for the production Phrases workflow check.
