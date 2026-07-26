@@ -18,9 +18,9 @@ The broader campaign continues from composition into production planning and the
 
 ## Current victory
 
-**Victory 2 — One performance reveals its grammar**
+**Victory 3: One Idea becomes an evolving passage**
 
-Split or collect a musician's source items, classify them as Variants within Pickup, Main, Turnaround and Ending families, and describe the Idea's Phrase Grammar without replacing normal REAPER editing or transport.
+Turn one Classified Idea into several deterministic, playable passages without manually duplicating every source item. Keep each generated Build editable, visible and explainable inside normal REAPER.
 
 ## Read first
 
@@ -79,8 +79,11 @@ Run the disposable two-phase live REAPER proof separately:
 
 ```sh
 tests/run_reaper_idea_probe.sh
+tests/run_reaper_generation_probe.sh
 ```
 
-The live proof creates only `/tmp/hit-reaper-idea-probe.rpp` and related `/tmp` evidence files. Never run its Lua script directly in a working project.
+The live proofs create only `/tmp/hit-reaper-idea-probe.rpp`, `/tmp/hit-reaper-generation-probe.rpp`
+and related `/tmp` evidence files. Never run their Lua scripts directly in a working project.
 
 See [Victory 2 manual acceptance](docs/VICTORY_2_MANUAL_TEST.md) for the production Phrases workflow check.
+See [Victory 3 manual acceptance](docs/VICTORY_3_MANUAL_TEST.md) for the production Generate workflow check.
