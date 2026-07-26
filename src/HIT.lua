@@ -42,6 +42,18 @@ local IDEA_ERRORS = {
   state_restore_failed = "REAPER could not restore HIT state after a failed write.",
   source_missing = "Source item is missing.",
   source_ambiguous = "Several items share this source identity.",
+  source_unavailable = "Source media is unavailable.",
+  split_cursor_outside = "Place REAPER edit cursor strictly inside selected Variant source.",
+  split_failed = "REAPER could not split source item.",
+  source_snapshot_failed = "Could not capture source item before split.",
+  idea_missing = "Idea no longer exists.",
+  variant_missing = "Variant no longer exists.",
+  source_already_classified = "Source already has a Variant in that family.",
+  sources_already_classified = "Selected sources are already Main Variants.",
+  main_required = "Main must keep at least one Variant.",
+  intensity_invalid = "Intensity must be unset or between 1 and 5.",
+  grammar_invalid = "Phrase Rules are invalid.",
+  project_inactive = "Return to this project before changing Phrases.",
 }
 
 local function idea_error_message(error_code)
@@ -61,7 +73,7 @@ local function load_imgui()
   return result
 end
 
-local function start(lifecycle, ideas)
+local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
   local support = lifecycle.host_support(
     app.GetAppVersion(),
     app.APIExists("ImGui_GetBuiltinPath")
@@ -92,6 +104,7 @@ local function start(lifecycle, ideas)
 
   local context_flags = ImGui.ConfigFlags_NavEnableKeyboard | ImGui.ConfigFlags_DockingEnable
   local context = ImGui.CreateContext("HIT", context_flags)
+  ImGui.SetConfigVar(context, ImGui.ConfigVar_NavCaptureKeyboard, 0)
   local focus = true
   local open = true
   local draft_guid
@@ -102,6 +115,26 @@ local function start(lifecycle, ideas)
   local loaded_revision
   local feedback
   local highlighted_id
+  local grammar_idea_id
+  local grammar_view
+  local grammar_state = {}
+
+  local function initial_grammar_state(loaded_grammar)
+    local state = { selected_family = "Main" }
+    local main = loaded_grammar
+      and loaded_grammar.families
+      and loaded_grammar.families.Main
+    if main and main.default_component_id then
+      state.selected_component_id = main.default_component_id
+      for _, variant in ipairs(main.variants) do
+        if variant.component_id == main.default_component_id then
+          state.name_draft = variant.name
+          break
+        end
+      end
+    end
+    return state
+  end
 
   local function idea_for_source(source_item_guid)
     if not source_item_guid then
@@ -150,6 +183,23 @@ local function start(lifecycle, ideas)
         highlighted_id = nil
       end
     end
+
+    if grammar_idea_id then
+      local loaded_grammar, grammar_error = grammar_adapter.open(
+        bound_project,
+        grammar_idea_id
+      )
+      if loaded_grammar then
+        grammar_view = loaded_grammar
+      else
+        grammar_view = {
+          idea_id = grammar_idea_id,
+          read_only = true,
+          error = grammar_error,
+          families = {},
+        }
+      end
+    end
   end
 
   local function frame()
@@ -194,35 +244,102 @@ local function start(lifecycle, ideas)
     end
 
     ImGui.PushFont(context, nil, FONT_SIZE)
+    local grammar_theme = grammar_idea_id and grammar_view
+    if grammar_theme then
+      grammar_ui.push_theme(ImGui, context)
+    end
     if focus then
       ImGui.SetNextWindowFocus(context)
       focus = false
     end
-    ImGui.SetNextWindowSize(context, 560, 560, ImGui.Cond_FirstUseEver)
+    ImGui.SetNextWindowSize(context, 760, 720, ImGui.Cond_FirstUseEver)
     local visible
     visible, open = ImGui.Begin(context, "HIT - " .. project_name .. "###HIT", open)
 
     if visible then
-      ImGui.Text(context, "Project: " .. project_name)
-      ImGui.Separator(context)
-
-      if access.can_mutate then
-        if candidate then
-          local selected_name = candidate.suggested_name ~= "" and candidate.suggested_name
-            or "Unnamed item"
+      if grammar_idea_id and grammar_view then
+        local selected_source_guid = candidate and candidate.source_item_guid
+        if selected_source_guid
+          and grammar_state.reaper_source_guid ~= selected_source_guid
+        then
+          grammar_ui.select_source_variant(
+            grammar_view,
+            grammar_state,
+            selected_source_guid
+          )
+          grammar_state.reaper_source_guid = selected_source_guid
+        end
+        if ImGui.Button(context, "Back to Ideas") then
+          grammar_idea_id = nil
+          grammar_view = nil
+          grammar_state = {}
+        else
+          ImGui.SameLine(context)
+          local grammar_status = grammar_view.classified and "Classified"
+            or "Main unavailable"
           ImGui.Text(
             context,
-            "Selected " .. candidate.source_kind .. ": " .. selected_name
+            (grammar_view.name or "Unavailable Idea")
+              .. " · Phrases · "
+              .. grammar_status
           )
-        else
-          ImGui.TextWrapped(context, idea_error_message(selection_error))
+          local function execute_grammar(command)
+            if not access.can_mutate then
+              return nil, "project_inactive"
+            end
+            local next_view, command_error, outcome = grammar_adapter.execute(
+              bound_project,
+              grammar_idea_id,
+              command
+            )
+            if next_view then
+              grammar_view = next_view
+              loaded_revision = app.GetProjectStateChangeCount(bound_project)
+            end
+            return next_view, command_error, outcome
+          end
+          local previous_component_id = grammar_state.selected_component_id
+          grammar_view = grammar_ui.draw(
+            ImGui,
+            context,
+            grammar_view,
+            grammar_state,
+            access.can_mutate,
+            execute_grammar
+          )
+          if grammar_state.selected_component_id ~= previous_component_id then
+            local source_item_guid = grammar_ui.selected_source_guid(
+              grammar_view,
+              grammar_state
+            )
+            if source_item_guid then
+              local selected = ideas.select_source(bound_project, source_item_guid)
+              if selected then
+                grammar_state.reaper_source_guid = source_item_guid
+              end
+            end
+          end
         end
       else
-        ImGui.TextWrapped(
-          context,
-          "Another project is active. Return to " .. project_name .. " or relaunch HIT."
-        )
-      end
+        ImGui.Text(context, "Project: " .. project_name)
+        ImGui.Separator(context)
+        if access.can_mutate then
+          if candidate then
+            local selected_name = candidate.suggested_name ~= "" and candidate.suggested_name
+              or "Unnamed item"
+            ImGui.Text(
+              context,
+              "Selected " .. candidate.source_kind .. ": " .. selected_name
+            )
+          else
+            ImGui.TextWrapped(context, idea_error_message(selection_error))
+          end
+        else
+          ImGui.TextWrapped(
+            context,
+            "Another project is active. Return to " .. project_name .. " or relaunch HIT."
+          )
+        end
 
       local selection_matches_draft = candidate
         and draft_guid == candidate.source_item_guid
@@ -390,11 +507,31 @@ local function start(lifecycle, ideas)
             end
           end
           ImGui.EndDisabled(context)
+          ImGui.SameLine(context)
+          if ImGui.Button(context, "Phrases###grammar_" .. current.id) then
+            local loaded_grammar, grammar_error = grammar_adapter.open(
+              bound_project,
+              current.id
+            )
+            grammar_idea_id = current.id
+            grammar_view = loaded_grammar or {
+              idea_id = current.id,
+              name = current.name,
+              read_only = true,
+              error = grammar_error,
+              families = {},
+            }
+            grammar_state = initial_grammar_state(grammar_view)
+          end
         end
+      end
       end
     end
 
     ImGui.End(context)
+    if grammar_theme then
+      grammar_ui.pop_theme(ImGui, context)
+    end
     ImGui.PopFont(context)
     return open
   end
@@ -420,7 +557,12 @@ local function main()
   assert(script_dir, "HIT must run from a saved script")
 
   package.path = script_dir .. "?.lua;" .. script_dir .. "?/init.lua;" .. package.path
-  start(require("hit.lifecycle"), require("hit.reaper.ideas"))
+  start(
+    require("hit.lifecycle"),
+    require("hit.reaper.ideas"),
+    require("hit.reaper.grammar"),
+    require("hit.ui.imgui.grammar")
+  )
 end
 
 local ok, trace = xpcall(main, debug.traceback)

@@ -1,58 +1,66 @@
 # Current victory
 
-## Victory 1 — One idea can enter HIT
+## Victory 2 — One performance reveals its grammar
 
-The campaign foundation is now present. The next detailed specification should focus on the smallest genuine musical capability: recognising one real REAPER item as a persistent HIT Idea.
+Victory 1 established durable Ideas linked to real REAPER audio and MIDI items. Victory 2 adds the smallest structural understanding needed before HIT can generate an evolving passage.
 
 ## Player outcome
 
-A musician records or selects one item in REAPER, names it as an Idea, closes and reopens the project, and HIT still recognises it correctly.
+A musician splits one longer performance or collects several separately recorded items, then classifies the resulting material as meaningful Variants within Pickup, Main, Turnaround and Ending families.
 
-The Idea may be one complete item. The user must not be forced to define phrase components, layers, intention curves or an arrangement before the Idea can exist.
+A complete through-composed item remains valid as Main A. Pickup, Turnaround and Ending material is optional.
 
 ## Victory condition
 
-- HIT can open as a ReaImGui editor in REAPER.
-- A project can be initialised safely.
-- One selected audio or MIDI item can become an Idea.
-- The Idea receives a stable identity and human-readable name.
-- Source media is not moved, trimmed or rewritten.
-- The Idea survives project save and reload.
-- HIT can show the Idea and resolve it back to the correct source item.
-- Missing or moved source material produces a visible error rather than silent reassignment.
-- The user action participates coherently in REAPER undo where applicable.
+- Creating an Idea also creates Main A with conservative Phrase Grammar.
+- HIT Split follows normal REAPER edit-cursor behaviour while updating all affected Variant references atomically.
+- Several selected independent audio or MIDI items can be added to one Idea as separate Main Variants.
+- Variants can move between Pickup, Main, Turnaround and Ending with one-click classification.
+- Every family has one Default Variant and editable family grammar.
+- A Variant may fully override its family's grammar.
+- A Variant may store optional Intensity from 1 to 5 without treating unset as 3.
+- The same source item may realise Variants in different families of one Idea without media duplication.
+- Missing, unavailable, ambiguous and externally split sources remain visible without silent reassignment.
+- Likely ordinary REAPER splits appear as quiet, dismissible recovery suggestions inside the Phrases view.
+- Every mutation is one coherent native REAPER undo action.
+- Save and reopen preserve exact Idea, Component and Source Reference identities.
+- HIT never replaces REAPER transport or ordinary editing.
 
 ## Evidence of victory
 
 A short manual demonstration proves:
 
-1. record or create one source item;
-2. open HIT;
-3. create `Idea A` from the selected item;
-4. save and close the REAPER project;
-5. reopen it;
-6. open HIT;
-7. confirm `Idea A` still refers to the correct source.
+1. create an Idea from one longer source item and confirm it begins as Main A;
+2. use HIT Split several times and classify the pieces;
+3. bulk-add several separately recorded items as independent Main Variants;
+4. assign optional Variant names and Intensity, choose defaults and edit Phrase Rules;
+5. use one source item in two different Phrase Families;
+6. split once with ordinary REAPER editing and recover it from the quiet Phrases-view suggestion;
+7. undo and redo each operation while item topology and HIT metadata remain coherent;
+8. save, close and reopen the project;
+9. confirm the Classified Idea and every Source Reference return exactly.
 
 ## Scope boundary
 
 This victory does not yet require:
 
-- splitting or tagging phrase components;
+- generated demo media;
+- custom transport or audition controls;
+- Item Bundles;
+- custom Phrase Families;
+- transition grammar between Ideas;
+- minimum repeats, maximum uses, passage energy journeys or sonic traits;
 - a dedicated composition canvas;
 - arrangement suggestions;
-- demo compilation;
 - intention mapping;
-- Werk integration;
-- Airwindows Meter integration;
-- Production Mapper;
-- Afterimage integration.
+- Werk or Airwindows Meter integration;
+- Production Mapper or Afterimage integration.
 
-However, the implementation should respect the domain and architecture documents so this simple Idea can later participate in those victories.
+Victory 3 may generate one track per Variant, grouped under a folder derived from the live source track for visible provenance. Victory 2 records enough identity and grammar to permit that layout without implementing it.
 
 ## Specification task
 
-Use the installed product/specification skills to drill this victory into:
+Use the installed product/specification skills to turn this agreed model into:
 
 - user flows;
 - requirements;
@@ -61,4 +69,4 @@ Use the installed product/specification skills to drill this victory into:
 - acceptance tests;
 - an achievable implementation plan.
 
-Do not turn the entire campaign into an implementation backlog. Plan only enough foundational work to achieve this victory cleanly and leave an obvious path to Victory 2.
+Do not turn the entire campaign into an implementation backlog. Plan only enough work to classify one Idea cleanly and leave an obvious path to Victory 3.

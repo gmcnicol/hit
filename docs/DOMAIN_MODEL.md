@@ -19,38 +19,64 @@ An Idea may be a single recorded item. It may later gain additional phrase compo
 
 ## Phrase component
 
-A recorded item or item bundle that performs a role within an Idea.
+A semantic use of one recorded source item within an Idea. In the current model each Phrase Component is a Variant in a Phrase Family. A later victory may allow an Item Bundle to fulfil one component.
 
-Initial roles:
+## Phrase family
+
+A structural role within an Idea.
+
+Victory 2 families:
 
 - Pickup;
 - Main;
-- Alternative;
 - Turnaround;
 - Ending;
-- Transition;
-- Sustain;
-- Texture;
-- Counterline.
 
-A component may describe:
+Every Idea begins with a Main family. Pickup, Turnaround and Ending are optional. Transition belongs to later multi-Idea composition; Sustain, Texture and Counterline belong to later layering work.
 
-- loopability;
-- whether it can start or end a passage;
-- whether it can overlap the next phrase;
-- preferred predecessors or successors;
-- minimum repeats before use;
-- maximum uses;
-- intrinsic energy;
-- sonic characteristics.
+A Phrase Family supplies default Phrase Grammar to its Variants:
 
-Not every Idea needs multiple components. A complete 16-bar through-composed section is valid as one component.
+- whether it may begin;
+- whether it may repeat;
+- whether it may end;
+- which Phrase Families may follow;
+- whether it may overlap its successor.
+
+Absent optional families do not invalidate allowed-next rules or make an Idea incomplete.
+
+## Variant
+
+One recorded Phrase Component belonging to one Phrase Family.
+
+A Variant has:
+
+- stable Component identity;
+- one Source Reference;
+- a stable generated label such as A or B, with no ordering meaning;
+- an optional musician-given name;
+- optional Variant Intensity from 1 to 5, where unset remains distinct from 3;
+- inherited family grammar or one complete grammar override;
+- optional status as the family's Default Variant.
+
+Every non-empty Phrase Family has exactly one Default Variant. One source item may realise Variants in several families of one Idea, but may appear only once within a family.
+
+An unsplit Idea begins as Main A. Main does not imply loopability, so a complete through-composed section remains valid without a special type.
+
+Variant Intensity describes the relative character of one recording. It does not choose phrases or define a passage-level Energy journey in Victory 2.
+
+## Source reference
+
+A stable project-local link from a Variant to one exact REAPER media item.
+
+Source item GUID is identity. Live track, item and take names are descriptive. Source Media remains authoritative; musician-directed editing may change Source Item Topology through native undo, while compilers never modify source items.
 
 ## Item bundle
 
 One musical component represented by related REAPER items across several source tracks.
 
 The compiler must preserve timing, offsets and relationships across the bundle.
+
+Item Bundles are not required for Victory 2. Adding several selected items creates several independent Variants rather than one bundle.
 
 ## Occurrence
 

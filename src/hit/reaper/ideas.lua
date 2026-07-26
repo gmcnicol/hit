@@ -1,9 +1,12 @@
 local app = reaper
 local idea = require("hit.model.idea")
 local codec = require("hit.model.state_codec")
+local grammar = require("hit.model.grammar")
+local grammar_codec = require("hit.model.grammar_codec")
 
 local ideas = {}
 local STATE_PARAMETER = "P_EXT:HIT_STATE_V1"
+local GRAMMAR_STATE_PARAMETER = "P_EXT:HIT_STATE_V2"
 
 local function source_guid(item)
   local ok, guid = app.GetSetMediaItemInfo_String(item, "GUID", "", false)
@@ -47,6 +50,52 @@ local function take_facts(take)
   return "audio", filename == "" or app.file_exists(filename)
 end
 
+local function item_source_facts(item)
+  local track = app.GetMediaItem_Track(item)
+  local take = app.GetActiveTake(item)
+  local kind
+  local available
+  if take then
+    kind, available = take_facts(take)
+  end
+  local position = app.GetMediaItemInfo_Value(item, "D_POSITION")
+  local duration = app.GetMediaItemInfo_Value(item, "D_LENGTH")
+  local _, track_name = app.GetTrackName(track)
+  local _, item_name = app.GetSetMediaItemInfo_String(item, "P_NOTES", "", false)
+  local source
+  local source_type = ""
+  local source_file = ""
+  local source_offset = 0
+  local playrate = 1
+  if take then
+    source = app.GetMediaItemTake_Source(take)
+    if source then
+      source_type = app.GetMediaSourceType(source) or ""
+      source_file = app.GetMediaSourceFileName(source) or ""
+    end
+    source_offset = app.GetMediaItemTakeInfo_Value(take, "D_STARTOFFS")
+    playrate = app.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE")
+  end
+  return {
+    status = kind and available and "available" or "unavailable",
+    item_name = item_name or "",
+    take_name = take and (app.GetTakeName(take) or "") or "",
+    source_name = take and (app.GetTakeName(take) or "") or "",
+    source_kind = kind or "unknown",
+    track_name = track_name,
+    track_index = app.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER"),
+    position = position,
+    duration = duration,
+    position_text = app.format_timestr_pos(position, "", -1),
+    duration_text = app.format_timestr_len(duration, "", position, -1),
+    selected = app.IsMediaItemSelected(item),
+    track_hidden = app.GetMediaTrackInfo_Value(track, "B_SHOWINTCP") == 0,
+    source_key = source_file ~= "" and (source_type .. "|" .. source_file) or nil,
+    source_offset = source_offset,
+    playrate = playrate,
+  }
+end
+
 function ideas.validate_name(proposed_name)
   return idea.validate_name(proposed_name)
 end
@@ -86,6 +135,82 @@ function ideas.selected_item(project)
   }
 end
 
+function ideas.selected_items(project)
+  local result = {}
+  for index = 0, app.CountSelectedMediaItems(project) - 1 do
+    local item = app.GetSelectedMediaItem(project, index)
+    local take = item and app.GetActiveTake(item)
+    if not take then
+      return nil, "active_take_missing"
+    end
+    local source_kind, source_available = take_facts(take)
+    if not source_kind then
+      return nil, "source_unsupported"
+    end
+    if not source_available then
+      return nil, "audio_unavailable"
+    end
+    local guid, guid_error = source_guid(item)
+    if not guid then
+      return nil, guid_error
+    end
+    local facts = item_source_facts(item)
+    facts.source_item_guid = guid
+    result[#result + 1] = facts
+  end
+  if #result == 0 then
+    return nil, "selection_none"
+  end
+  return result
+end
+
+function ideas.source_facts(project, current_idea)
+  local indexed = index_items(project)
+  local result = {}
+  for _, family_name in ipairs({ "Pickup", "Main", "Turnaround", "Ending" }) do
+    local family = current_idea.families[family_name]
+    for _, variant in ipairs(family.variants) do
+      local guid = variant.source_item_guid
+      if result[guid] == nil then
+        local item = indexed[guid]
+        if item == false then
+          result[guid] = { status = "ambiguous" }
+        elseif item then
+          result[guid] = item_source_facts(item)
+        else
+          result[guid] = { status = "missing" }
+        end
+      end
+    end
+  end
+  return result
+end
+
+function ideas.find_source(project, source_item_guid)
+  local item = index_items(project)[source_item_guid]
+  if item == false then
+    return nil, "source_ambiguous"
+  end
+  if not item then
+    return nil, "source_missing"
+  end
+  return item
+end
+
+function ideas.topology(project)
+  local result = {}
+  for item_index = 0, app.CountMediaItems(project) - 1 do
+    local item = app.GetMediaItem(project, item_index)
+    local guid = source_guid(item)
+    if guid then
+      local facts = item_source_facts(item)
+      facts.source_item_guid = guid
+      result[guid] = facts
+    end
+  end
+  return result
+end
+
 function ideas.load(project)
   local registrations = {}
 
@@ -118,27 +243,10 @@ function ideas.load(project)
     if item == false then
       row.source_status = "ambiguous"
     elseif item then
-      local track = app.GetMediaItem_Track(item)
-      local take = app.GetActiveTake(item)
-      local kind
-      local available
-      if take then
-        kind, available = take_facts(take)
+      local facts = item_source_facts(item)
+      for key, value in pairs(facts) do
+        row[key == "status" and "source_status" or key] = value
       end
-      local position = app.GetMediaItemInfo_Value(item, "D_POSITION")
-      local duration = app.GetMediaItemInfo_Value(item, "D_LENGTH")
-      local _, track_name = app.GetTrackName(track)
-      row.source_status = kind and available and "available" or "unavailable"
-      row.source_name = take and (app.GetTakeName(take) or "") or ""
-      row.source_kind = kind or "unknown"
-      row.track_name = track_name
-      row.track_index = app.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER")
-      row.position = position
-      row.duration = duration
-      row.position_text = app.format_timestr_pos(position, "", -1)
-      row.duration_text = app.format_timestr_len(duration, "", position, -1)
-      row.selected = app.IsMediaItemSelected(item)
-      row.track_hidden = app.GetMediaTrackInfo_Value(track, "B_SHOWINTCP") == 0
     end
     view.ideas[#view.ideas + 1] = row
   end
@@ -234,8 +342,30 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
 
   local encoded = codec.encode(next_state)
   local created = next_state.ideas[#next_state.ideas]
+  local grammar_found, grammar_value = app.GetSetMediaTrackInfo_String(
+    master,
+    GRAMMAR_STATE_PARAMETER,
+    "",
+    false
+  )
+  local current_grammar
+  if grammar_found and grammar_value ~= "" then
+    current_grammar, decode_error = grammar_codec.decode(grammar_value)
+    if not current_grammar then
+      return nil, decode_error
+    end
+  else
+    current_grammar = grammar.from_v1(state)
+  end
+  local next_grammar = grammar.add_created_idea(
+    current_grammar,
+    created,
+    grammar.component_id_for_idea(created.id)
+  )
+  local grammar_encoded = grammar_codec.encode(next_grammar)
   local undo_label = "HIT: Create Idea " .. created.name
   local previous = found and value or ""
+  local previous_grammar = grammar_found and grammar_value or ""
 
   app.Undo_BeginBlock2(project)
   local write_ok, written_or_trace = xpcall(function()
@@ -245,13 +375,30 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
       encoded,
       true
     )
+    local grammar_written = app.GetSetMediaTrackInfo_String(
+      master,
+      GRAMMAR_STATE_PARAMETER,
+      grammar_encoded,
+      true
+    )
     local verified_found, verified_value = app.GetSetMediaTrackInfo_String(
       master,
       STATE_PARAMETER,
       "",
       false
     )
-    return written and verified_found and verified_value == encoded
+    local grammar_verified_found, grammar_verified_value = app.GetSetMediaTrackInfo_String(
+      master,
+      GRAMMAR_STATE_PARAMETER,
+      "",
+      false
+    )
+    return written
+      and grammar_written
+      and verified_found
+      and verified_value == encoded
+      and grammar_verified_found
+      and grammar_verified_value == grammar_encoded
   end, debug.traceback)
 
   local function restore()
@@ -265,6 +412,16 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
     if not restored_ok then
       return false
     end
+    local grammar_restored_ok = pcall(
+      app.GetSetMediaTrackInfo_String,
+      master,
+      GRAMMAR_STATE_PARAMETER,
+      previous_grammar,
+      true
+    )
+    if not grammar_restored_ok then
+      return false
+    end
     local read_ok, restored_found, restored_value = pcall(
       app.GetSetMediaTrackInfo_String,
       master,
@@ -273,9 +430,20 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
       false
     )
     local prior_found = found and value ~= ""
+    local grammar_read_ok, restored_grammar_found, restored_grammar_value = pcall(
+      app.GetSetMediaTrackInfo_String,
+      master,
+      GRAMMAR_STATE_PARAMETER,
+      "",
+      false
+    )
+    local prior_grammar_found = grammar_found and grammar_value ~= ""
     return read_ok
       and restored_found == prior_found
       and restored_value == (prior_found and value or "")
+      and grammar_read_ok
+      and restored_grammar_found == prior_grammar_found
+      and restored_grammar_value == (prior_grammar_found and grammar_value or "")
   end
 
   local restored
