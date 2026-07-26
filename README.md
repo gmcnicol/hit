@@ -68,10 +68,11 @@ than classes. Expected failures return `nil, "error_code"`; assertions are
 reserved for programmer errors and invalid internal state. Only modules under
 `src/hit/reaper/` and the bootstrap may access the host `reaper` global.
 
-Run fast pure Lua and in-memory REAPER adapter checks:
+Run syntax validation, formatting verification, lint, pure Lua tests and
+in-memory REAPER adapter tests:
 
 ```sh
-for test in tests/*_test.lua; do lua "$test"; done
+scripts/check
 ```
 
 Run the disposable two-phase live REAPER proof separately:

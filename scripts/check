@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+
+for file in $(find src tests -name '*.lua' -type f | sort); do
+  luac -p "$file"
+done
+
+stylua --check src tests
+luacheck src tests
+
+for test in tests/*_test.lua; do
+  lua "$test"
+done
