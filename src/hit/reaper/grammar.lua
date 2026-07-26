@@ -20,12 +20,7 @@ local function project_is_active(project)
 end
 
 local function restore_parameter(master, parameter, found, value)
-  local restored = app.GetSetMediaTrackInfo_String(
-    master,
-    parameter,
-    found and value or "",
-    true
-  )
+  local restored = app.GetSetMediaTrackInfo_String(master, parameter, found and value or "", true)
   if not restored then
     return false
   end
@@ -95,17 +90,19 @@ function adapter.port(project)
       for source_item_guid, origin in pairs(known) do
         local before = cached.topology[source_item_guid]
         local after = current[source_item_guid]
-        if before and after
+        if
+          before
+          and after
           and math.abs(before.position - after.position) < EPSILON
           and after.duration < before.duration - EPSILON
           and before.source_key ~= nil
         then
           local boundary = after.position + after.duration
-          local expected_offset = before.source_offset
-            + after.duration * before.playrate
+          local expected_offset = before.source_offset + after.duration * before.playrate
           local matches = {}
           for candidate_guid, candidate in pairs(current) do
-            if not known[candidate_guid]
+            if
+              not known[candidate_guid]
               and candidate.track_index == after.track_index
               and math.abs(candidate.position - boundary) < EPSILON
               and candidate.source_key == before.source_key
@@ -118,8 +115,7 @@ function adapter.port(project)
                 origin_source_item_guid = source_item_guid,
                 source_item_guid = candidate_guid,
                 boundary = boundary,
-                source_name = candidate.take_name ~= "" and candidate.take_name
-                  or candidate.item_name,
+                source_name = candidate.take_name ~= "" and candidate.take_name or candidate.item_name,
               }
             end
           end
@@ -160,24 +156,14 @@ function adapter.port(project)
 
     app.Undo_BeginBlock2(project)
     local write_ok, written_or_trace = xpcall(function()
-      local written = app.GetSetMediaTrackInfo_String(
-        master,
-        V2_PARAMETER,
-        encoded,
-        true
-      )
+      local written = app.GetSetMediaTrackInfo_String(master, V2_PARAMETER, encoded, true)
       local verified_found, verified = read_parameter(master, V2_PARAMETER)
       return written and verified_found and verified == encoded
     end, debug.traceback)
 
     local restored
     if not write_ok or not written_or_trace then
-      restored = restore_parameter(
-        master,
-        V2_PARAMETER,
-        previous_found,
-        previous
-      )
+      restored = restore_parameter(master, V2_PARAMETER, previous_found, previous)
     end
     app.Undo_EndBlock2(project, undo_label, -1)
 
@@ -239,12 +225,7 @@ function adapter.port(project)
         return
       end
       local encoded = grammar_codec.encode(next_state)
-      local written = app.GetSetMediaTrackInfo_String(
-        master,
-        V2_PARAMETER,
-        encoded,
-        true
-      )
+      local written = app.GetSetMediaTrackInfo_String(master, V2_PARAMETER, encoded, true)
       local verified_found, verified = read_parameter(master, V2_PARAMETER)
       if not written or not verified_found or verified ~= encoded then
         operation_error = "state_write_failed"
@@ -268,12 +249,7 @@ function adapter.port(project)
       else
         restored = false
       end
-      restored = restore_parameter(
-        master,
-        V2_PARAMETER,
-        previous_found,
-        previous
-      ) and restored
+      restored = restore_parameter(master, V2_PARAMETER, previous_found, previous) and restored
       app.UpdateArrange()
     end
     app.Undo_EndBlock2(project, undo_label, -1)

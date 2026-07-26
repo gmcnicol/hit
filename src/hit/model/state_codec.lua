@@ -2,15 +2,15 @@ local idea = require("hit.model.idea")
 local codec = {}
 
 local function name_is_valid(name)
-  return name ~= ""
-    and name == name:match("^%s*(.-)%s*$")
-    and not name:find("[%z\1-\31\127]")
+  return name ~= "" and name == name:match("^%s*(.-)%s*$") and not name:find("[%z\1-\31\127]")
 end
 
 local function escape(value)
-  return (value:gsub("([^A-Za-z0-9%-%._~])", function(character)
-    return string.format("%%%02X", string.byte(character))
-  end))
+  return (
+    value:gsub("([^A-Za-z0-9%-%._~])", function(character)
+      return string.format("%%%02X", string.byte(character))
+    end)
+  )
 end
 
 local function unescape(value)
@@ -58,10 +58,7 @@ function codec.encode(state)
     assert(idea.guid_is_valid(current.id), "state idea id must be GUID")
     assert(not ids[current.id], "state idea id must be unique")
     assert(type(current.name) == "string" and name_is_valid(current.name), "state idea name must be valid string")
-    assert(
-      idea.guid_is_valid(current.source_item_guid),
-      "state source_item_guid must be GUID"
-    )
+    assert(idea.guid_is_valid(current.source_item_guid), "state source_item_guid must be GUID")
     ids[current.id] = true
     records[#records + 1] = table.concat({
       escape(current.id),

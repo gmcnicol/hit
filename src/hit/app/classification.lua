@@ -55,9 +55,7 @@ function classification.open(port, idea_id)
   current_idea.read_only = false
   current_idea.classified = classified
   current_idea.version = state.version
-  current_idea.recovery = port.recovery_candidates
-      and port.recovery_candidates(state, current_idea)
-    or {}
+  current_idea.recovery = port.recovery_candidates and port.recovery_candidates(state, current_idea) or {}
   return current_idea
 end
 
@@ -142,12 +140,7 @@ function classification.execute(port, idea_id, command)
     generated_ids[index] = port.new_guid()
   end
 
-  local next_state, apply_error, undo_label, outcome = grammar.apply(
-    state,
-    idea_id,
-    command,
-    generated_ids
-  )
+  local next_state, apply_error, undo_label, outcome = grammar.apply(state, idea_id, command, generated_ids)
   if not next_state then
     return nil, apply_error
   end

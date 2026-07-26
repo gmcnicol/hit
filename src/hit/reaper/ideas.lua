@@ -273,10 +273,7 @@ function ideas.load(project)
 end
 
 function ideas.select_source(project, source_item_guid)
-  assert(
-    type(source_item_guid) == "string" and source_item_guid ~= "",
-    "source_item_guid must be non-empty string"
-  )
+  assert(type(source_item_guid) == "string" and source_item_guid ~= "", "source_item_guid must be non-empty string")
 
   local item = index_items(project)[source_item_guid]
   if item == false then
@@ -330,24 +327,15 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
     return nil, decode_error
   end
 
-  local next_state, create_error = idea.create(
-    state,
-    { source_item_guid = selected.source_item_guid },
-    proposed_name,
-    app.genGuid("")
-  )
+  local next_state, create_error =
+    idea.create(state, { source_item_guid = selected.source_item_guid }, proposed_name, app.genGuid(""))
   if not next_state then
     return nil, create_error
   end
 
   local encoded = codec.encode(next_state)
   local created = next_state.ideas[#next_state.ideas]
-  local grammar_found, grammar_value = app.GetSetMediaTrackInfo_String(
-    master,
-    GRAMMAR_STATE_PARAMETER,
-    "",
-    false
-  )
+  local grammar_found, grammar_value = app.GetSetMediaTrackInfo_String(master, GRAMMAR_STATE_PARAMETER, "", false)
   local current_grammar
   if grammar_found and grammar_value ~= "" then
     current_grammar, decode_error = grammar_codec.decode(grammar_value)
@@ -357,11 +345,7 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
   else
     current_grammar = grammar.from_v1(state)
   end
-  local next_grammar = grammar.add_created_idea(
-    current_grammar,
-    created,
-    grammar.component_id_for_idea(created.id)
-  )
+  local next_grammar = grammar.add_created_idea(current_grammar, created, grammar.component_id_for_idea(created.id))
   local grammar_encoded = grammar_codec.encode(next_grammar)
   local undo_label = "HIT: Create Idea " .. created.name
   local previous = found and value or ""
@@ -369,30 +353,11 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
 
   app.Undo_BeginBlock2(project)
   local write_ok, written_or_trace = xpcall(function()
-    local written = app.GetSetMediaTrackInfo_String(
-      master,
-      STATE_PARAMETER,
-      encoded,
-      true
-    )
-    local grammar_written = app.GetSetMediaTrackInfo_String(
-      master,
-      GRAMMAR_STATE_PARAMETER,
-      grammar_encoded,
-      true
-    )
-    local verified_found, verified_value = app.GetSetMediaTrackInfo_String(
-      master,
-      STATE_PARAMETER,
-      "",
-      false
-    )
-    local grammar_verified_found, grammar_verified_value = app.GetSetMediaTrackInfo_String(
-      master,
-      GRAMMAR_STATE_PARAMETER,
-      "",
-      false
-    )
+    local written = app.GetSetMediaTrackInfo_String(master, STATE_PARAMETER, encoded, true)
+    local grammar_written = app.GetSetMediaTrackInfo_String(master, GRAMMAR_STATE_PARAMETER, grammar_encoded, true)
+    local verified_found, verified_value = app.GetSetMediaTrackInfo_String(master, STATE_PARAMETER, "", false)
+    local grammar_verified_found, grammar_verified_value =
+      app.GetSetMediaTrackInfo_String(master, GRAMMAR_STATE_PARAMETER, "", false)
     return written
       and grammar_written
       and verified_found
@@ -402,41 +367,20 @@ function ideas.create(project, expected_source_item_guid, proposed_name)
   end, debug.traceback)
 
   local function restore()
-    local restored_ok = pcall(
-      app.GetSetMediaTrackInfo_String,
-      master,
-      STATE_PARAMETER,
-      previous,
-      true
-    )
+    local restored_ok = pcall(app.GetSetMediaTrackInfo_String, master, STATE_PARAMETER, previous, true)
     if not restored_ok then
       return false
     end
-    local grammar_restored_ok = pcall(
-      app.GetSetMediaTrackInfo_String,
-      master,
-      GRAMMAR_STATE_PARAMETER,
-      previous_grammar,
-      true
-    )
+    local grammar_restored_ok =
+      pcall(app.GetSetMediaTrackInfo_String, master, GRAMMAR_STATE_PARAMETER, previous_grammar, true)
     if not grammar_restored_ok then
       return false
     end
-    local read_ok, restored_found, restored_value = pcall(
-      app.GetSetMediaTrackInfo_String,
-      master,
-      STATE_PARAMETER,
-      "",
-      false
-    )
+    local read_ok, restored_found, restored_value =
+      pcall(app.GetSetMediaTrackInfo_String, master, STATE_PARAMETER, "", false)
     local prior_found = found and value ~= ""
-    local grammar_read_ok, restored_grammar_found, restored_grammar_value = pcall(
-      app.GetSetMediaTrackInfo_String,
-      master,
-      GRAMMAR_STATE_PARAMETER,
-      "",
-      false
-    )
+    local grammar_read_ok, restored_grammar_found, restored_grammar_value =
+      pcall(app.GetSetMediaTrackInfo_String, master, GRAMMAR_STATE_PARAMETER, "", false)
     local prior_grammar_found = grammar_found and grammar_value ~= ""
     return read_ok
       and restored_found == prior_found

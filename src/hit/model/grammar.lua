@@ -167,7 +167,8 @@ local function array_is_contiguous(values)
 end
 
 local function rules_are_valid(rules)
-  if type(rules) ~= "table"
+  if
+    type(rules) ~= "table"
     or type(rules.may_begin) ~= "boolean"
     or type(rules.may_repeat) ~= "boolean"
     or type(rules.may_end) ~= "boolean"
@@ -205,8 +206,7 @@ function grammar.validate(state)
     assert(valid_idea_name, "grammar idea name must be valid")
     assert(type(current_idea.families) == "table", "grammar families must be table")
     assert(
-      type(current_idea.dismissed_recoveries) == "table"
-        and array_is_contiguous(current_idea.dismissed_recoveries),
+      type(current_idea.dismissed_recoveries) == "table" and array_is_contiguous(current_idea.dismissed_recoveries),
       "dismissed recoveries must be array"
     )
     for _, fingerprint in ipairs(current_idea.dismissed_recoveries) do
@@ -248,13 +248,18 @@ function grammar.validate(state)
         assert(optional_name_is_valid(variant.name), "variant name invalid")
         assert(
           variant.intensity == nil
-            or (type(variant.intensity) == "number"
+            or (
+              type(variant.intensity) == "number"
               and variant.intensity % 1 == 0
               and variant.intensity >= 1
-              and variant.intensity <= 5),
+              and variant.intensity <= 5
+            ),
           "variant intensity invalid"
         )
-        assert(variant.grammar_override == nil or rules_are_valid(variant.grammar_override), "variant grammar override invalid")
+        assert(
+          variant.grammar_override == nil or rules_are_valid(variant.grammar_override),
+          "variant grammar override invalid"
+        )
         component_ids[variant.component_id] = true
         labels[variant.label] = true
         sources[variant.source_item_guid] = true
@@ -422,8 +427,7 @@ function grammar.apply(state, idea_id, command, generated_ids)
         return nil, "recovery_dismissed"
       end
     end
-    current_idea.dismissed_recoveries[#current_idea.dismissed_recoveries + 1] =
-      command.fingerprint
+    current_idea.dismissed_recoveries[#current_idea.dismissed_recoveries + 1] = command.fingerprint
     grammar.validate(result)
     return result, nil, label
   end
@@ -441,10 +445,7 @@ function grammar.apply(state, idea_id, command, generated_ids)
     return result, nil, label
   end
 
-  local variant, source_family, source_family_name, variant_index = find_variant(
-    current_idea,
-    command.component_id
-  )
+  local variant, source_family, source_family_name, variant_index = find_variant(current_idea, command.component_id)
   if not variant then
     return nil, "variant_missing"
   end
@@ -525,11 +526,14 @@ function grammar.apply(state, idea_id, command, generated_ids)
     end
     variant.name = name
   elseif command.type == "set_intensity" then
-    if command.intensity ~= nil
-      and (type(command.intensity) ~= "number"
+    if
+      command.intensity ~= nil
+      and (
+        type(command.intensity) ~= "number"
         or command.intensity % 1 ~= 0
         or command.intensity < 1
-        or command.intensity > 5)
+        or command.intensity > 5
+      )
     then
       return nil, "intensity_invalid"
     end
