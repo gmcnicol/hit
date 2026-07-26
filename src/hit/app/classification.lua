@@ -36,12 +36,32 @@ local classification = {}
 ---@field source_name string
 ---@field fingerprint string
 
----@class HitPhrasesView: HitGrammarIdea
----@field read_only boolean
----@field classified boolean?
----@field version integer?
----@field error string?
----@field recovery HitRecoveryCandidate[]?
+---@class HitProjectedVariant: HitVariant
+---@field source HitSourceFacts
+---@field shared boolean
+
+---@class HitPhrasesFamily
+---@field grammar HitPhraseRules
+---@field default_component_id string?
+---@field variants HitProjectedVariant[]
+
+---@class HitPhrasesIdeaView
+---@field id string
+---@field name string
+---@field families table<HitPhraseFamilyName, HitPhrasesFamily>
+---@field dismissed_recoveries string[]
+---@field read_only false
+---@field classified boolean
+---@field version integer
+---@field recovery HitRecoveryCandidate[]
+
+---@class HitPhrasesErrorView
+---@field idea_id string
+---@field read_only true
+---@field error string
+---@field families table
+
+---@alias HitPhrasesView HitPhrasesIdeaView|HitPhrasesErrorView
 
 ---@class HitClassificationLoad
 ---@field v1 HitV1State
