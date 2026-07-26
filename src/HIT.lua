@@ -73,7 +73,7 @@ local function load_imgui()
   return result
 end
 
-local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
+local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items)
   local support = lifecycle.host_support(app.GetAppVersion(), app.APIExists("ImGui_GetBuiltinPath"))
 
   if not support.ok then
@@ -210,7 +210,7 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
     local candidate
     local selection_error
     if access.can_mutate then
-      candidate, selection_error = ideas.selected_item(bound_project)
+      candidate, selection_error = source_items.selected_item(bound_project)
       if not draft_dirty then
         local candidate_guid = candidate and candidate.source_item_guid
         if candidate_guid ~= draft_guid then
@@ -278,7 +278,7 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
           if grammar_state.selected_component_id ~= previous_component_id then
             local source_item_guid = grammar_ui.selected_source_guid(grammar_view, grammar_state)
             if source_item_guid then
-              local selected = ideas.select_source(bound_project, source_item_guid)
+              local selected = source_items.select_source(bound_project, source_item_guid)
               if selected then
                 grammar_state.reaper_source_guid = source_item_guid
               end
@@ -320,7 +320,7 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
 
           ImGui.BeginDisabled(context, not access.can_mutate or not draft_guid)
           if ImGui.Button(context, "Select original") then
-            local selected, select_error = ideas.select_source(bound_project, draft_guid)
+            local selected, select_error = source_items.select_source(bound_project, draft_guid)
             if selected then
               feedback = { text = "Selected original draft source." }
               reload_ideas()
@@ -433,7 +433,7 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
               not access.can_mutate or current.source_status == "missing" or current.source_status == "ambiguous"
             )
             if ImGui.Button(context, "Select source###select_" .. current.id) then
-              local selected, select_error = ideas.select_source(bound_project, current.source_item_guid)
+              local selected, select_error = source_items.select_source(bound_project, current.source_item_guid)
               if selected then
                 highlighted_id = current.id
                 feedback = { text = "Selected source for " .. current.name .. "." }
@@ -495,7 +495,8 @@ local function main()
     require("hit.lifecycle"),
     require("hit.reaper.ideas"),
     require("hit.reaper.grammar"),
-    require("hit.ui.imgui.grammar")
+    require("hit.ui.imgui.grammar"),
+    require("hit.reaper.source_items")
   )
 end
 

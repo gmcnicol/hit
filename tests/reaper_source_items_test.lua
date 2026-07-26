@@ -158,7 +158,7 @@ reaper = {
   end,
 }
 
-local source_items = require("hit.reaper.ideas")
+local source_items = require("hit.reaper.source_items")
 
 local none, none_error = source_items.selected_item(project)
 assert(none == nil and none_error == "selection_none")

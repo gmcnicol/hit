@@ -13,28 +13,6 @@ function ideas.validate_name(proposed_name)
   return idea.validate_name(proposed_name)
 end
 
-function ideas.selected_item(project)
-  return source_items.selected_item(project)
-end
-
-function ideas.selected_items(project)
-  return source_items.selected_items(project)
-end
-
----@param current_idea HitGrammarIdea
----@return table<string, HitSourceFacts>
-function ideas.source_facts(project, current_idea)
-  return source_items.source_facts(project, current_idea)
-end
-
-function ideas.find_source(project, source_item_guid)
-  return source_items.find_source(project, source_item_guid)
-end
-
-function ideas.topology(project)
-  return source_items.topology(project)
-end
-
 function ideas.load(project)
   local registrations = {}
 
@@ -94,10 +72,6 @@ function ideas.load(project)
   end)
 
   return view
-end
-
-function ideas.select_source(project, source_item_guid)
-  return source_items.select_source(project, source_item_guid)
 end
 
 function ideas.create(project, expected_source_item_guid, proposed_name)

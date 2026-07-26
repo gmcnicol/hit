@@ -312,41 +312,42 @@ reaper = {
 }
 
 local adapter = require("hit.reaper.ideas")
+local source_items = require("hit.reaper.source_items")
 
-local no_selection, selection_error = adapter.selected_item(project)
+local no_selection, selection_error = source_items.selected_item(project)
 assert(no_selection == nil and selection_error == "selection_none")
 
 selected = { item_a, item_b }
-local multiple_selection, multiple_error = adapter.selected_item(project)
+local multiple_selection, multiple_error = source_items.selected_item(project)
 assert(multiple_selection == nil and multiple_error == "selection_multiple")
 
 selected = { item_a }
 item_a.selected = true
 item_a.take = nil
-local no_take, take_error = adapter.selected_item(project)
+local no_take, take_error = source_items.selected_item(project)
 assert(no_take == nil and take_error == "active_take_missing")
 
 item_a.take = take_a
 take_a.source = nil
-local unavailable, unavailable_error = adapter.selected_item(project)
+local unavailable, unavailable_error = source_items.selected_item(project)
 assert(unavailable == nil and unavailable_error == "source_unsupported")
 take_a.source = { channels = 0 }
-local unsupported, unsupported_error = adapter.selected_item(project)
+local unsupported, unsupported_error = source_items.selected_item(project)
 assert(unsupported == nil and unsupported_error == "source_unsupported")
 take_a.source = source_a
 local item_a_guid = item_a.guid
 item_a.guid = "invalid"
-local invalid_guid, invalid_guid_error = adapter.selected_item(project)
+local invalid_guid, invalid_guid_error = source_items.selected_item(project)
 assert(invalid_guid == nil and invalid_guid_error == "source_guid_invalid")
 item_a.guid = item_a_guid
 
-local candidate = assert(adapter.selected_item(project))
+local candidate = assert(source_items.selected_item(project))
 assert(candidate.source_item_guid == "{10000001-0000-0000-0000-000000000001}")
 assert(candidate.suggested_name == "Take A")
 assert(candidate.source_kind == "audio")
 
 selected = { item_c }
-local midi_candidate = assert(adapter.selected_item(project))
+local midi_candidate = assert(source_items.selected_item(project))
 assert(midi_candidate.source_item_guid == "{10000003-0000-0000-0000-000000000003}")
 assert(midi_candidate.suggested_name == "MIDI live")
 assert(midi_candidate.source_kind == "midi")
@@ -424,7 +425,7 @@ local before_select = {
   position = item_b.position,
   length = item_b.length,
 }
-assert(adapter.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
+assert(source_items.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
 assert(#selected == 1 and selected[1] == item_b)
 assert(calls[#calls] == "refresh")
 assert(reaper.GetCursorPositionEx(project) == before_select.cursor)
@@ -432,7 +433,7 @@ assert(track_b.hidden == before_select.hidden)
 assert(item_b.position == before_select.position and item_b.length == before_select.length)
 assert(arrange_start == 2 and arrange_end == 12)
 
-local missing, missing_error = adapter.select_source(project, "{10000004-0000-0000-0000-000000000004}")
+local missing, missing_error = source_items.select_source(project, "{10000004-0000-0000-0000-000000000004}")
 assert(missing == nil and missing_error == "source_missing")
 assert(#selected == 1 and selected[1] == item_b)
 
@@ -445,7 +446,7 @@ for _, current in ipairs(ambiguous_view.ideas) do
 end
 assert(ambiguous_rows["{00000002-0000-0000-0000-000000000002}"].source_status == "ambiguous")
 assert(ambiguous_rows["{00000001-0000-0000-0000-000000000001}"].source_status == "available")
-local ambiguous, ambiguous_error = adapter.select_source(project, "{10000002-0000-0000-0000-000000000002}")
+local ambiguous, ambiguous_error = source_items.select_source(project, "{10000002-0000-0000-0000-000000000002}")
 assert(ambiguous == nil and ambiguous_error == "source_ambiguous")
 assert(#selected == 1 and selected[1] == item_b)
 items[#items] = nil
@@ -462,7 +463,7 @@ assert(unavailable_rows["{00000001-0000-0000-0000-000000000001}"].source_kind ==
 assert(unavailable_rows["{00000002-0000-0000-0000-000000000002}"].source_status == "unavailable")
 assert(unavailable_rows["{00000002-0000-0000-0000-000000000002}"].source_kind == "unknown")
 assert(unavailable_rows["{00000003-0000-0000-0000-000000000003}"].source_status == "available")
-assert(adapter.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
+assert(source_items.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
 item_b.take = take_b
 take_a.source = source_a
 
@@ -486,7 +487,7 @@ local item_e = {
 }
 items[#items + 1] = item_e
 selected = { item_e }
-local blank_midi = assert(adapter.selected_item(project))
+local blank_midi = assert(source_items.selected_item(project))
 assert(blank_midi.suggested_name == "")
 assert(blank_midi.source_kind == "midi")
 local second = assert(adapter.create(project, "{10000005-0000-0000-0000-000000000005}", "Idea A"))
