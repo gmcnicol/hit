@@ -182,6 +182,17 @@ assert(missing == nil and missing_error == "source_missing")
 local duplicate, duplicate_error = source_items.find_source(project, ambiguous.guid)
 assert(duplicate == nil and duplicate_error == "source_ambiguous")
 
+local resolved = source_items.resolve(project, {
+  audio.guid,
+  offline.guid,
+  ambiguous.guid,
+  "{10000005-0000-0000-0000-000000000005}",
+})
+assert(resolved[audio.guid].status == "available")
+assert(resolved[offline.guid].status == "unavailable")
+assert(resolved[ambiguous.guid].status == "ambiguous")
+assert(resolved["{10000005-0000-0000-0000-000000000005}"].status == "missing")
+
 local current_idea = {
   families = {
     Pickup = { variants = {} },

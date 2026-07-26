@@ -110,12 +110,22 @@ local function item_source_facts(item)
   }
 end
 
-function source_items.index(project)
-  return index_items(project)
-end
-
-function source_items.inspect(item)
-  return item_source_facts(item)
+function source_items.resolve(project, source_item_guids)
+  local indexed = index_items(project)
+  local result = {}
+  for _, guid in ipairs(source_item_guids) do
+    if result[guid] == nil then
+      local item = indexed[guid]
+      if item == false then
+        result[guid] = { status = "ambiguous" }
+      elseif item then
+        result[guid] = item_source_facts(item)
+      else
+        result[guid] = { status = "missing" }
+      end
+    end
+  end
+  return result
 end
 
 function source_items.selected_item(project)
@@ -185,25 +195,14 @@ end
 ---@param current_idea HitGrammarIdea
 ---@return table<string, HitSourceFacts>
 function source_items.source_facts(project, current_idea)
-  local indexed = index_items(project)
-  local result = {}
+  local source_item_guids = {}
   for _, family_name in ipairs({ "Pickup", "Main", "Turnaround", "Ending" }) do
     local family = current_idea.families[family_name]
     for _, variant in ipairs(family.variants) do
-      local guid = variant.source_item_guid
-      if result[guid] == nil then
-        local item = indexed[guid]
-        if item == false then
-          result[guid] = { status = "ambiguous" }
-        elseif item then
-          result[guid] = item_source_facts(item)
-        else
-          result[guid] = { status = "missing" }
-        end
-      end
+      source_item_guids[#source_item_guids + 1] = variant.source_item_guid
     end
   end
-  return result
+  return source_items.resolve(project, source_item_guids)
 end
 
 function source_items.find_source(project, source_item_guid)

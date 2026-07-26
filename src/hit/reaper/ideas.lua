@@ -23,18 +23,18 @@ function ideas.load(project)
   if not state then
     return nil, decode_error
   end
+  local source_item_guids = {}
   for _, current in ipairs(state.ideas) do
     registrations[#registrations + 1] = {
       idea = current,
     }
+    source_item_guids[#source_item_guids + 1] = current.source_item_guid
   end
 
-  local items = source_items.index(project)
+  local source_facts = source_items.resolve(project, source_item_guids)
   local view = { ideas = {} }
   for _, registration in ipairs(registrations) do
     local current = registration.idea
-    local item = items[current.source_item_guid]
-
     local row = {
       id = current.id,
       name = current.name,
@@ -42,13 +42,8 @@ function ideas.load(project)
       source_status = "missing",
       selected = false,
     }
-    if item == false then
-      row.source_status = "ambiguous"
-    elseif item then
-      local facts = source_items.inspect(item)
-      for key, fact in pairs(facts) do
-        row[key == "status" and "source_status" or key] = fact
-      end
+    for key, fact in pairs(source_facts[current.source_item_guid]) do
+      row[key == "status" and "source_status" or key] = fact
     end
     view.ideas[#view.ideas + 1] = row
   end
