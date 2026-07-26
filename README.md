@@ -61,13 +61,20 @@ The current repository is focused on the **Composition Mapper**. Production Mapp
 
 ## Development checks
 
-Run pure Lua and in-memory REAPER adapter checks:
+HIT targets REAPER's embedded Lua 5.4 runtime. Production code follows the
+dependency direction in `docs/ARCHITECTURE.md`: bootstrap, UI, application,
+pure model, then concrete REAPER adapters. Modules return plain tables rather
+than classes. Expected failures return `nil, "error_code"`; assertions are
+reserved for programmer errors and invalid internal state. Only modules under
+`src/hit/reaper/` and the bootstrap may access the host `reaper` global.
+
+Run fast pure Lua and in-memory REAPER adapter checks:
 
 ```sh
 for test in tests/*_test.lua; do lua "$test"; done
 ```
 
-Run the disposable two-phase live REAPER proof:
+Run the disposable two-phase live REAPER proof separately:
 
 ```sh
 tests/run_reaper_idea_probe.sh
