@@ -8,6 +8,24 @@ local ideas = {}
 local STATE_PARAMETER = "P_EXT:HIT_STATE_V1"
 local GRAMMAR_STATE_PARAMETER = "P_EXT:HIT_STATE_V2"
 
+---@class HitSourceFacts
+---@field status "available"|"unavailable"|"missing"|"ambiguous"
+---@field item_name string?
+---@field take_name string?
+---@field source_name string?
+---@field source_kind "audio"|"midi"|"unknown"?
+---@field track_name string?
+---@field track_index number?
+---@field position number?
+---@field duration number?
+---@field position_text string?
+---@field duration_text string?
+---@field selected boolean?
+---@field track_hidden boolean?
+---@field source_key string?
+---@field source_offset number?
+---@field playrate number?
+
 local function source_guid(item)
   local ok, guid = app.GetSetMediaItemInfo_String(item, "GUID", "", false)
   if not ok or guid == "" then
@@ -164,6 +182,8 @@ function ideas.selected_items(project)
   return result
 end
 
+---@param current_idea HitGrammarIdea
+---@return table<string, HitSourceFacts>
 function ideas.source_facts(project, current_idea)
   local indexed = index_items(project)
   local result = {}

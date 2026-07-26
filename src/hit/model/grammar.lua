@@ -2,6 +2,38 @@ local idea = require("hit.model.idea")
 
 local grammar = {}
 
+---@alias HitPhraseFamilyName "Pickup"|"Main"|"Turnaround"|"Ending"
+
+---@class HitPhraseRules
+---@field may_begin boolean
+---@field may_repeat boolean
+---@field may_end boolean
+---@field may_overlap boolean
+---@field allowed_next table<HitPhraseFamilyName, true>
+
+---@class HitVariant
+---@field component_id string
+---@field source_item_guid string
+---@field label string
+---@field name string
+---@field intensity integer?
+---@field grammar_override HitPhraseRules?
+
+---@class HitPhraseFamily
+---@field grammar HitPhraseRules
+---@field default_component_id string?
+---@field variants HitVariant[]
+
+---@class HitGrammarIdea
+---@field id string
+---@field name string
+---@field families table<HitPhraseFamilyName, HitPhraseFamily>
+---@field dismissed_recoveries string[]
+
+---@class HitV2State
+---@field version 2
+---@field ideas HitGrammarIdea[]
+
 grammar.FAMILY_ORDER = { "Pickup", "Main", "Turnaround", "Ending" }
 
 local FAMILY_SET = {}

@@ -74,6 +74,8 @@ local function decode_rules(fields, offset)
   return rules
 end
 
+---@param state HitV2State
+---@return string
 function codec.encode(state)
   grammar.validate(state)
   local records = { "2" }
@@ -126,6 +128,9 @@ function codec.encode(state)
   return table.concat(records, "|")
 end
 
+---@param value unknown
+---@return HitV2State? state
+---@return string? error_code
 function codec.decode(value)
   if type(value) ~= "string" then
     return nil, "state_invalid"
