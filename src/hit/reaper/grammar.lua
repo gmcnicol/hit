@@ -2,7 +2,7 @@ local app = reaper
 local classification = require("hit.app.classification")
 local state_codec = require("hit.model.state_codec")
 local grammar_codec = require("hit.model.grammar_codec")
-local ideas = require("hit.reaper.ideas")
+local source_items = require("hit.reaper.source_items")
 
 local adapter = {}
 local V1_PARAMETER = "P_EXT:HIT_STATE_V1"
@@ -52,11 +52,11 @@ function adapter.port(project)
   end
 
   function port.source_facts(current_idea)
-    return ideas.source_facts(project, current_idea)
+    return source_items.source_facts(project, current_idea)
   end
 
   function port.selected_sources()
-    return ideas.selected_items(project)
+    return source_items.selected_items(project)
   end
 
   function port.new_guid()
@@ -70,7 +70,7 @@ function adapter.port(project)
       return cached.candidates
     end
 
-    local current = ideas.topology(project)
+    local current = source_items.topology(project)
     local candidates = {}
     if cached then
       local known = {}
@@ -185,7 +185,7 @@ function adapter.port(project)
     if not project_is_active(project) then
       return nil, "project_inactive"
     end
-    local item, source_error = ideas.find_source(project, source_item_guid)
+    local item, source_error = source_items.find_source(project, source_item_guid)
     if not item then
       return nil, source_error
     end
@@ -238,13 +238,13 @@ function adapter.port(project)
     local restored = true
     if not operation_ok or operation_error then
       if right_guid then
-        local right = ideas.find_source(project, right_guid)
+        local right = source_items.find_source(project, right_guid)
         if right then
           local track = app.GetMediaItem_Track(right)
           restored = app.DeleteTrackMediaItem(track, right) and restored
         end
       end
-      local left = ideas.find_source(project, source_item_guid)
+      local left = source_items.find_source(project, source_item_guid)
       if left then
         restored = app.SetItemStateChunk(left, previous_chunk, false) and restored
       else
