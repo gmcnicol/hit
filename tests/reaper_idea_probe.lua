@@ -316,7 +316,7 @@ local function write()
 
   local restore_result = reaper.Undo_DoUndo2(project)
   assert(restore_result ~= 0)
-  local restored_item = assert(find_item(project, created.source_item_guid))
+  assert(find_item(project, created.source_item_guid))
   local recovered = only_idea(project)
   assert(recovered.id == created.id)
   assert(recovered.name == "Idea A")
@@ -556,7 +556,7 @@ local function write()
   local hit_split_redone = assert(grammar_adapter.open(project, created.id))
   assert(assert(variant_by_source(hit_split_redone, "Main", hit_split_source)).component_id == hit_split_component)
 
-  local defaulted = metadata_roundtrip(
+  metadata_roundtrip(
     {
       type = "set_default",
       component_id = hit_split_component,
