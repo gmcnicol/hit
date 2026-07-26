@@ -33,12 +33,14 @@ local missing_name, name_error = idea.create(state, item_facts, " \t\n ", "{0000
 assert(missing_name == nil)
 assert(name_error == "name_required")
 
-local shared_source = assert(idea.create(
-  state,
-  { source_item_guid = "{10000008-0000-0000-0000-000000000008}" },
-  "Existing",
-  "{0000000A-0000-0000-0000-00000000000A}"
-))
+local shared_source = assert(
+  idea.create(
+    state,
+    { source_item_guid = "{10000008-0000-0000-0000-000000000008}" },
+    "Existing",
+    "{0000000A-0000-0000-0000-00000000000A}"
+  )
+)
 assert(shared_source.ideas[2].name == "Existing")
 assert(shared_source.ideas[2].source_item_guid == "{10000008-0000-0000-0000-000000000008}")
 

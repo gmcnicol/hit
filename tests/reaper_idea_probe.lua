@@ -82,12 +82,7 @@ end
 
 local function grammar_blob(project)
   local master = assert(reaper.GetMasterTrack(project))
-  local found, value = reaper.GetSetMediaTrackInfo_String(
-    master,
-    "P_EXT:HIT_STATE_V2",
-    "",
-    false
-  )
+  local found, value = reaper.GetSetMediaTrackInfo_String(master, "P_EXT:HIT_STATE_V2", "", false)
   assert(found and value ~= "")
   return value
 end
@@ -149,21 +144,9 @@ local function reload()
 
   local grammar_view, grammar_error = grammar_adapter.open(project, expected_id)
   assert(grammar_view, grammar_error)
-  local original_variant = assert(variant_by_source(
-    grammar_view,
-    "Main",
-    expected_source
-  ))
-  local hit_split_variant = assert(variant_by_source(
-    grammar_view,
-    "Main",
-    expected_hit_split_source
-  ))
-  local recovery_variant = assert(variant_by_source(
-    grammar_view,
-    "Main",
-    expected_recovery_source
-  ))
+  local original_variant = assert(variant_by_source(grammar_view, "Main", expected_source))
+  local hit_split_variant = assert(variant_by_source(grammar_view, "Main", expected_hit_split_source))
+  local recovery_variant = assert(variant_by_source(grammar_view, "Main", expected_recovery_source))
   assert(original_variant.component_id == expected_original_component)
   assert(original_variant.name == "Focused opening")
   assert(original_variant.intensity == 4)
@@ -295,12 +278,7 @@ local function write()
   local alternate_take = reaper.AddTakeToMediaItem(item)
   local alternate_source = assert(reaper.PCM_Source_CreateFromFile(audio_path))
   reaper.SetMediaItemTake_Source(alternate_take, alternate_source)
-  assert(reaper.GetSetMediaItemTakeInfo_String(
-    alternate_take,
-    "P_NAME",
-    "Alternate Glass source",
-    true
-  ))
+  assert(reaper.GetSetMediaItemTakeInfo_String(alternate_take, "P_NAME", "Alternate Glass source", true))
   reaper.SetActiveTake(alternate_take)
   local switched_take = only_idea(project)
   assert(switched_take.id == created.id)
@@ -358,18 +336,10 @@ local function write()
   assert(online_again.source_status == "available")
 
   local duplicate = reaper.AddMediaItemToTrack(moved_track)
-  assert(reaper.GetSetMediaItemInfo_String(
-    duplicate,
-    "GUID",
-    created.source_item_guid,
-    true
-  ))
+  assert(reaper.GetSetMediaItemInfo_String(duplicate, "GUID", created.source_item_guid, true))
   local ambiguous = only_idea(project)
   assert(ambiguous.source_status == "ambiguous")
-  local ambiguous_selection, ambiguous_error = ideas.select_source(
-    project,
-    created.source_item_guid
-  )
+  local ambiguous_selection, ambiguous_error = ideas.select_source(project, created.source_item_guid)
   assert(ambiguous_selection == nil and ambiguous_error == "source_ambiguous")
   assert(reaper.DeleteTrackMediaItem(moved_track, duplicate))
   assert(only_idea(project).source_status == "available")
@@ -400,11 +370,7 @@ local function write()
   assert(midi_selected.suggested_name == "MIDI source")
   assert(midi_selected.source_item_guid == midi_before.guid)
 
-  local midi_created, midi_create_error = ideas.create(
-    project,
-    midi_selected.source_item_guid,
-    "MIDI Idea"
-  )
+  local midi_created, midi_create_error = ideas.create(project, midi_selected.source_item_guid, "MIDI Idea")
   assert(midi_created, midi_create_error)
   assert(midi_created.name == "MIDI Idea")
   assert(midi_created.source_item_guid == midi_before.guid)
@@ -446,11 +412,7 @@ local function write()
 
   local function metadata_roundtrip(command, expected_label, check)
     local before_blob = grammar_blob(project)
-    local changed, change_error, outcome = grammar_adapter.execute(
-      project,
-      created.id,
-      command
-    )
+    local changed, change_error, outcome = grammar_adapter.execute(project, created.id, command)
     assert(changed, change_error)
     assert(reaper.Undo_CanUndo2(project) == expected_label)
     if check then
@@ -488,11 +450,7 @@ local function write()
       assert(outcome.added == 1 and outcome.skipped == 1)
     end
   )
-  local midi_variant = assert(variant_by_source(
-    collected,
-    "Main",
-    midi_created.source_item_guid
-  ))
+  local midi_variant = assert(variant_by_source(collected, "Main", midi_created.source_item_guid))
 
   local moved = metadata_roundtrip(
     {
@@ -502,11 +460,7 @@ local function write()
     },
     "HIT: Move Variant - Idea A",
     function(grammar_view)
-      local current = assert(variant_by_source(
-        grammar_view,
-        "Pickup",
-        midi_created.source_item_guid
-      ))
+      local current = assert(variant_by_source(grammar_view, "Pickup", midi_created.source_item_guid))
       assert(current.component_id == midi_variant.component_id)
       assert(grammar_view.families.Pickup.default_component_id == current.component_id)
     end
@@ -521,11 +475,7 @@ local function write()
     },
     "HIT: Add Alternate Use - Idea A",
     function(grammar_view)
-      local shared = assert(variant_by_source(
-        grammar_view,
-        "Turnaround",
-        created.source_item_guid
-      ))
+      local shared = assert(variant_by_source(grammar_view, "Turnaround", created.source_item_guid))
       assert(shared.component_id ~= original_component)
       assert(shared.shared)
     end
@@ -572,22 +522,11 @@ local function write()
     end
   )
 
-  local split_source_before = item_facts(assert(find_item(
-    project,
-    created.source_item_guid
-  )))
-  reaper.SetEditCurPos2(
-    project,
-    split_source_before.position + split_source_before.length / 2,
-    false,
-    false
-  )
+  local split_source_before = item_facts(assert(find_item(project, created.source_item_guid)))
+  reaper.SetEditCurPos2(project, split_source_before.position + split_source_before.length / 2, false, false)
   local before_hit_split_blob = grammar_blob(project)
-  local hit_split, hit_split_error = grammar_adapter.execute(
-    project,
-    created.id,
-    { type = "split", component_id = original_component }
-  )
+  local hit_split, hit_split_error =
+    grammar_adapter.execute(project, created.id, { type = "split", component_id = original_component })
   assert(hit_split, hit_split_error)
   assert(reaper.Undo_CanUndo2(project) == "HIT: Split Variant - Idea A")
   assert(#hit_split.families.Main.variants == 2)
@@ -604,24 +543,18 @@ local function write()
   local left_after_split = item_facts(assert(find_item(project, created.source_item_guid)))
   local right_after_split = item_facts(assert(find_item(project, hit_split_source)))
   assert(math.abs(left_after_split.length - split_source_before.length / 2) < 0.000001)
-  assert(math.abs(right_after_split.position
-    - (split_source_before.position + split_source_before.length / 2)) < 0.000001)
+  assert(
+    math.abs(right_after_split.position - (split_source_before.position + split_source_before.length / 2)) < 0.000001
+  )
   assert(reaper.Undo_DoUndo2(project) ~= 0)
   assert(grammar_blob(project) == before_hit_split_blob)
   assert(find_item(project, hit_split_source) == nil)
-  assert(item_facts(assert(find_item(
-    project,
-    created.source_item_guid
-  ))).chunk == split_source_before.chunk)
+  assert(item_facts(assert(find_item(project, created.source_item_guid))).chunk == split_source_before.chunk)
   assert(reaper.Undo_DoRedo2(project) ~= 0)
   assert(grammar_blob(project) == after_hit_split_blob)
   assert(find_item(project, hit_split_source))
   local hit_split_redone = assert(grammar_adapter.open(project, created.id))
-  assert(assert(variant_by_source(
-    hit_split_redone,
-    "Main",
-    hit_split_source
-  )).component_id == hit_split_component)
+  assert(assert(variant_by_source(hit_split_redone, "Main", hit_split_source)).component_id == hit_split_component)
 
   local defaulted = metadata_roundtrip(
     {
@@ -638,10 +571,8 @@ local function write()
   local recovery_origin = assert(find_item(project, hit_split_source))
   local recovery_origin_facts = item_facts(recovery_origin)
   reaper.Undo_BeginBlock2(project)
-  local recovery_right = assert(reaper.SplitMediaItem(
-    recovery_origin,
-    recovery_origin_facts.position + recovery_origin_facts.length / 2
-  ))
+  local recovery_right =
+    assert(reaper.SplitMediaItem(recovery_origin, recovery_origin_facts.position + recovery_origin_facts.length / 2))
   local recovery_right_guid = item_facts(recovery_right).guid
   reaper.Undo_EndBlock2(project, "Musician: Ordinary split for recovery", -1)
   local recovery_view = assert(grammar_adapter.open(project, created.id))
@@ -657,20 +588,14 @@ local function write()
       assert(variant_by_source(grammar_view, "Main", recovery_right_guid))
     end
   )
-  local recovery_component = assert(variant_by_source(
-    attached,
-    "Main",
-    recovery_right_guid
-  )).component_id
+  local recovery_component = assert(variant_by_source(attached, "Main", recovery_right_guid)).component_id
 
   assert(grammar_adapter.open(project, created.id))
   local dismiss_origin = assert(find_item(project, created.source_item_guid))
   local dismiss_origin_facts = item_facts(dismiss_origin)
   reaper.Undo_BeginBlock2(project)
-  local dismiss_right = assert(reaper.SplitMediaItem(
-    dismiss_origin,
-    dismiss_origin_facts.position + dismiss_origin_facts.length / 2
-  ))
+  local dismiss_right =
+    assert(reaper.SplitMediaItem(dismiss_origin, dismiss_origin_facts.position + dismiss_origin_facts.length / 2))
   reaper.Undo_EndBlock2(project, "Musician: Ordinary split to dismiss", -1)
   local dismiss_view = assert(grammar_adapter.open(project, created.id))
   assert(#dismiss_view.recovery == 1)
@@ -690,10 +615,7 @@ local function write()
 
   local final_audio = item_facts(assert(find_item(project, created.source_item_guid)))
   reaper.Main_SaveProjectEx(project, project_path, 8)
-  assert(item_facts(assert(find_item(
-    project,
-    created.source_item_guid
-  ))).chunk == final_audio.chunk)
+  assert(item_facts(assert(find_item(project, created.source_item_guid))).chunk == final_audio.chunk)
   assert_item_unchanged(project, midi_before)
 
   local expected = assert(io.open(expected_path, "w"))

@@ -77,8 +77,10 @@ local moved_default = assert(grammar.apply(default_b, IDEA_ID, {
   component_id = default_b.ideas[1].families.Main.variants[2].component_id,
   family = "Pickup",
 }))
-assert(moved_default.ideas[1].families.Main.default_component_id
-  == moved_default.ideas[1].families.Main.variants[1].component_id)
+assert(
+  moved_default.ideas[1].families.Main.default_component_id
+    == moved_default.ideas[1].families.Main.variants[1].component_id
+)
 
 local collision_state = grammar.from_v1({
   version = 1,
@@ -193,8 +195,7 @@ local split = assert(grammar.apply(inherited, IDEA_ID, {
 assert(split.ideas[1].families.Main.variants[1].component_id == stable_component_id)
 assert(split.ideas[1].families.Main.variants[1].source_item_guid == SOURCE_A)
 assert(split.ideas[1].families.Main.variants[3].label == "B")
-assert(split.ideas[1].families.Main.variants[3].source_item_guid
-  == "{10000004-0000-0000-0000-000000000004}")
+assert(split.ideas[1].families.Main.variants[3].source_item_guid == "{10000004-0000-0000-0000-000000000004}")
 
 local sole_main, main_error = grammar.apply(state, IDEA_ID, {
   type = "move",
