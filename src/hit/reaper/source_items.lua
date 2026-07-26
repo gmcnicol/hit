@@ -110,6 +110,14 @@ local function item_source_facts(item)
   }
 end
 
+function source_items.index(project)
+  return index_items(project)
+end
+
+function source_items.inspect(item)
+  return item_source_facts(item)
+end
+
 function source_items.selected_item(project)
   local selection_count = app.CountSelectedMediaItems(project)
   if selection_count == 0 then

@@ -9,94 +9,6 @@ local ideas = {}
 local STATE_PARAMETER = "P_EXT:HIT_STATE_V1"
 local GRAMMAR_STATE_PARAMETER = "P_EXT:HIT_STATE_V2"
 
-local function source_guid(item)
-  local ok, guid = app.GetSetMediaItemInfo_String(item, "GUID", "", false)
-  if not ok or guid == "" then
-    return nil, "source_guid_missing"
-  end
-  if not idea.guid_is_valid(guid) then
-    return nil, "source_guid_invalid"
-  end
-  return guid
-end
-
-local function index_items(project)
-  local items = {}
-  for item_index = 0, app.CountMediaItems(project) - 1 do
-    local item = app.GetMediaItem(project, item_index)
-    local guid = source_guid(item)
-    if guid then
-      if items[guid] ~= nil then
-        items[guid] = false
-      else
-        items[guid] = item
-      end
-    end
-  end
-  return items
-end
-
-local function take_facts(take)
-  if app.TakeIsMIDI(take) then
-    return "midi", true
-  end
-  local source = app.GetMediaItemTake_Source(take)
-  if not source or app.GetMediaSourceNumChannels(source) <= 0 then
-    return
-  end
-  if app.GetMediaSourceType(source):match("^_OFFLINE") then
-    return "audio", false
-  end
-  local filename = app.GetMediaSourceFileName(source)
-  return "audio", filename == "" or app.file_exists(filename)
-end
-
-local function item_source_facts(item)
-  local track = app.GetMediaItem_Track(item)
-  local take = app.GetActiveTake(item)
-  local kind
-  local available
-  if take then
-    kind, available = take_facts(take)
-  end
-  local position = app.GetMediaItemInfo_Value(item, "D_POSITION")
-  local duration = app.GetMediaItemInfo_Value(item, "D_LENGTH")
-  local _, track_name = app.GetTrackName(track)
-  local _, item_name = app.GetSetMediaItemInfo_String(item, "P_NOTES", "", false)
-  local source
-  local source_type = ""
-  local source_file = ""
-  local source_offset = 0
-  local playrate = 1
-  if take then
-    source = app.GetMediaItemTake_Source(take)
-    if source then
-      source_type = app.GetMediaSourceType(source) or ""
-      source_file = app.GetMediaSourceFileName(source) or ""
-    end
-    source_offset = app.GetMediaItemTakeInfo_Value(take, "D_STARTOFFS")
-    playrate = app.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE")
-  end
-  return {
-    status = kind and available and "available" or "unavailable",
-    item_name = item_name or "",
-    take_name = take and (app.GetTakeName(take) or "") or "",
-    source_name = take and (app.GetTakeName(take) or "") or "",
-    source_kind = kind or "unknown",
-    track_name = track_name,
-    track_index = app.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER"),
-    position = position,
-    duration = duration,
-    position_text = app.format_timestr_pos(position, "", -1),
-    duration_text = app.format_timestr_len(duration, "", position, -1),
-    selected = app.IsMediaItemSelected(item),
-    track_hidden = app.GetMediaTrackInfo_Value(track, "B_SHOWINTCP") == 0,
-    source_key = source_file ~= "" and (source_type .. "|" .. source_file) or nil,
-    source_offset = source_offset,
-    playrate = playrate,
-  }
-end
-
 function ideas.validate_name(proposed_name)
   return idea.validate_name(proposed_name)
 end
@@ -139,7 +51,7 @@ function ideas.load(project)
     }
   end
 
-  local items = index_items(project)
+  local items = source_items.index(project)
   local view = { ideas = {} }
   for _, registration in ipairs(registrations) do
     local current = registration.idea
@@ -155,7 +67,7 @@ function ideas.load(project)
     if item == false then
       row.source_status = "ambiguous"
     elseif item then
-      local facts = item_source_facts(item)
+      local facts = source_items.inspect(item)
       for key, fact in pairs(facts) do
         row[key == "status" and "source_status" or key] = fact
       end
@@ -191,7 +103,7 @@ end
 function ideas.create(project, expected_source_item_guid, proposed_name)
   assert(type(expected_source_item_guid) == "string", "expected_source_item_guid must be string")
 
-  local selected, selection_error = ideas.selected_item(project)
+  local selected, selection_error = source_items.selected_item(project)
   if not selected then
     return nil, selection_error
   end
