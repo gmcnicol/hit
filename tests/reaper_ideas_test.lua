@@ -633,7 +633,6 @@ assert(calls[#calls - 2] == "write")
 assert(calls[#calls - 1]:match("^end:HIT: Add Main Variants"))
 assert(calls[#calls] == "dirty")
 
-local saved_v2 = master.v2_state
 local reopened = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 assert(reopened.families.Main.variants[2].component_id == classified.families.Main.variants[2].component_id)
 assert(reopened.families.Main.variants[3].source_item_guid == item_e.guid)
@@ -698,7 +697,7 @@ v2_write_hook = nil
 assert(failed_classification == nil and failed_classification_error == "state_write_failed")
 assert(master.v2_state == split_saved_v2)
 
-local recovery_baseline = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
+assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 local before_ordinary_split_state = master.v2_state
 local ordinary_right = assert(reaper.SplitMediaItem(item_a, item_a.position + item_a.length / 2))
 assert(master.v2_state == before_ordinary_split_state)
@@ -721,7 +720,7 @@ for _, variant in ipairs(attached.families.Main.variants) do
 end
 assert(attached_found)
 
-local dismiss_baseline = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
+assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 local dismiss_right = assert(reaper.SplitMediaItem(item_b, item_b.position + item_b.length / 2))
 local dismiss_view = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 assert(#dismiss_view.recovery == 1)
