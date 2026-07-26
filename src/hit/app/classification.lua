@@ -2,6 +2,80 @@ local grammar = require("hit.model.grammar")
 
 local classification = {}
 
+---@alias HitClassificationCommandType
+---|"bulk_add"
+---|"move"
+---|"alternate_use"
+---|"set_name"
+---|"set_intensity"
+---|"set_default"
+---|"set_family_grammar"
+---|"set_variant_grammar"
+---|"inherit_family_grammar"
+---|"split"
+---|"attach_recovery"
+---|"dismiss_recovery"
+
+---@class HitClassificationCommand
+---@field type HitClassificationCommandType
+---@field component_id string?
+---@field family HitPhraseFamilyName?
+---@field name string?
+---@field intensity integer?
+---@field grammar HitPhraseRules?
+---@field sources HitSourceFacts[]?
+---@field fingerprint string?
+
+---@class HitRecoveryCandidate
+---@field component_id string
+---@field family HitPhraseFamilyName
+---@field origin_label string
+---@field origin_source_item_guid string
+---@field source_item_guid string
+---@field boundary number
+---@field source_name string
+---@field fingerprint string
+
+---@class HitProjectedVariant: HitVariant
+---@field source HitSourceFacts
+---@field shared boolean
+
+---@class HitPhrasesFamily
+---@field grammar HitPhraseRules
+---@field default_component_id string?
+---@field variants HitProjectedVariant[]
+
+---@class HitPhrasesIdeaView
+---@field id string
+---@field name string
+---@field families table<HitPhraseFamilyName, HitPhrasesFamily>
+---@field dismissed_recoveries string[]
+---@field read_only false
+---@field classified boolean
+---@field version integer
+---@field recovery HitRecoveryCandidate[]
+
+---@class HitPhrasesErrorView
+---@field idea_id string
+---@field read_only true
+---@field error string
+---@field families table
+
+---@alias HitPhrasesView HitPhrasesIdeaView|HitPhrasesErrorView
+
+---@class HitClassificationLoad
+---@field v1 HitV1State
+---@field v2 HitV2State?
+
+---@class HitClassificationPort
+---@field load fun(): HitClassificationLoad?, string?
+---@field source_facts fun(idea: HitGrammarIdea): table<string, HitSourceFacts>
+---@field selected_sources fun(): HitSourceFacts[]?, string?
+---@field new_guid fun(): string
+---@field recovery_candidates fun(state: HitV2State, idea: HitGrammarIdea): HitRecoveryCandidate[]
+---@field commit fun(state: HitV2State, undo_label: string): boolean?, string?
+---@field split_source fun(guid: string, label: string, build: function): boolean?, string?
+
 local function load_state(port)
   local loaded, load_error = port.load()
   if not loaded then
@@ -23,6 +97,10 @@ local function source_counts(current_idea)
   return counts
 end
 
+---@param port HitClassificationPort
+---@param idea_id string
+---@return HitPhrasesView? view
+---@return string? error_code
 function classification.open(port, idea_id)
   assert(type(port) == "table" and type(port.load) == "function", "project port required")
   local state, load_error = load_state(port)
@@ -55,12 +133,16 @@ function classification.open(port, idea_id)
   current_idea.read_only = false
   current_idea.classified = classified
   current_idea.version = state.version
-  current_idea.recovery = port.recovery_candidates
-      and port.recovery_candidates(state, current_idea)
-    or {}
+  current_idea.recovery = port.recovery_candidates and port.recovery_candidates(state, current_idea) or {}
   return current_idea
 end
 
+---@param port HitClassificationPort
+---@param idea_id string
+---@param command HitClassificationCommand
+---@return HitPhrasesView? view
+---@return string? error_code
+---@return table? outcome
 function classification.execute(port, idea_id, command)
   assert(type(port) == "table" and type(port.load) == "function", "project port required")
   assert(type(command) == "table", "command required")
@@ -142,12 +224,7 @@ function classification.execute(port, idea_id, command)
     generated_ids[index] = port.new_guid()
   end
 
-  local next_state, apply_error, undo_label, outcome = grammar.apply(
-    state,
-    idea_id,
-    command,
-    generated_ids
-  )
+  local next_state, apply_error, undo_label, outcome = grammar.apply(state, idea_id, command, generated_ids)
   if not next_state then
     return nil, apply_error
   end

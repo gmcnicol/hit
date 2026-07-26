@@ -51,9 +51,7 @@ local port = {
   split_source = function(source_item_guid, label, build_next)
     assert(source_item_guid == SOURCE_A)
     assert(label == "HIT: Split Variant - Performance")
-    local next_state, build_error = build_next(
-      "{10000003-0000-0000-0000-000000000003}"
-    )
+    local next_state, build_error = build_next("{10000003-0000-0000-0000-000000000003}")
     assert(next_state, build_error)
     stored = { v1 = stored.v1, v2 = next_state }
     commits[#commits + 1] = label
@@ -90,8 +88,7 @@ local split_view = assert(classification.execute(port, IDEA_ID, {
 }))
 assert(#split_view.families.Main.variants == 3)
 assert(split_view.families.Main.variants[1].component_id == split_component)
-assert(split_view.families.Main.variants[3].source_item_guid
-  == "{10000003-0000-0000-0000-000000000003}")
+assert(split_view.families.Main.variants[3].source_item_guid == "{10000003-0000-0000-0000-000000000003}")
 
 local failing_port = {
   load = port.load,

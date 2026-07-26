@@ -14,9 +14,21 @@ local master = {
   state = codec.encode({
     version = 1,
     ideas = {
-      { id = "{00000002-0000-0000-0000-000000000002}", name = "Available", source_item_guid = "{10000002-0000-0000-0000-000000000002}" },
-      { id = "{00000003-0000-0000-0000-000000000003}", name = "Moved", source_item_guid = "{10000003-0000-0000-0000-000000000003}" },
-      { id = "{00000004-0000-0000-0000-000000000004}", name = "Missing", source_item_guid = "{10000004-0000-0000-0000-000000000004}" },
+      {
+        id = "{00000002-0000-0000-0000-000000000002}",
+        name = "Available",
+        source_item_guid = "{10000002-0000-0000-0000-000000000002}",
+      },
+      {
+        id = "{00000003-0000-0000-0000-000000000003}",
+        name = "Moved",
+        source_item_guid = "{10000003-0000-0000-0000-000000000003}",
+      },
+      {
+        id = "{00000004-0000-0000-0000-000000000004}",
+        name = "Missing",
+        source_item_guid = "{10000004-0000-0000-0000-000000000004}",
+      },
     },
   }),
 }
@@ -263,8 +275,7 @@ reaper = {
     for key, value in pairs(item.take) do
       right_take[key] = value
     end
-    right_take.offset = (item.take.offset or 0)
-      + (position - item.position) * (item.take.playrate or 1)
+    right_take.offset = (item.take.offset or 0) + (position - item.position) * (item.take.playrate or 1)
     local right = {
       guid = split_ids[split_index],
       track = item.track,
@@ -301,41 +312,42 @@ reaper = {
 }
 
 local adapter = require("hit.reaper.ideas")
+local source_items = require("hit.reaper.source_items")
 
-local no_selection, selection_error = adapter.selected_item(project)
+local no_selection, selection_error = source_items.selected_item(project)
 assert(no_selection == nil and selection_error == "selection_none")
 
 selected = { item_a, item_b }
-local multiple_selection, multiple_error = adapter.selected_item(project)
+local multiple_selection, multiple_error = source_items.selected_item(project)
 assert(multiple_selection == nil and multiple_error == "selection_multiple")
 
 selected = { item_a }
 item_a.selected = true
 item_a.take = nil
-local no_take, take_error = adapter.selected_item(project)
+local no_take, take_error = source_items.selected_item(project)
 assert(no_take == nil and take_error == "active_take_missing")
 
 item_a.take = take_a
 take_a.source = nil
-local unavailable, unavailable_error = adapter.selected_item(project)
+local unavailable, unavailable_error = source_items.selected_item(project)
 assert(unavailable == nil and unavailable_error == "source_unsupported")
 take_a.source = { channels = 0 }
-local unsupported, unsupported_error = adapter.selected_item(project)
+local unsupported, unsupported_error = source_items.selected_item(project)
 assert(unsupported == nil and unsupported_error == "source_unsupported")
 take_a.source = source_a
 local item_a_guid = item_a.guid
 item_a.guid = "invalid"
-local invalid_guid, invalid_guid_error = adapter.selected_item(project)
+local invalid_guid, invalid_guid_error = source_items.selected_item(project)
 assert(invalid_guid == nil and invalid_guid_error == "source_guid_invalid")
 item_a.guid = item_a_guid
 
-local candidate = assert(adapter.selected_item(project))
+local candidate = assert(source_items.selected_item(project))
 assert(candidate.source_item_guid == "{10000001-0000-0000-0000-000000000001}")
 assert(candidate.suggested_name == "Take A")
 assert(candidate.source_kind == "audio")
 
 selected = { item_c }
-local midi_candidate = assert(adapter.selected_item(project))
+local midi_candidate = assert(source_items.selected_item(project))
 assert(midi_candidate.source_item_guid == "{10000003-0000-0000-0000-000000000003}")
 assert(midi_candidate.suggested_name == "MIDI live")
 assert(midi_candidate.source_kind == "midi")
@@ -413,7 +425,7 @@ local before_select = {
   position = item_b.position,
   length = item_b.length,
 }
-assert(adapter.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
+assert(source_items.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
 assert(#selected == 1 and selected[1] == item_b)
 assert(calls[#calls] == "refresh")
 assert(reaper.GetCursorPositionEx(project) == before_select.cursor)
@@ -421,7 +433,7 @@ assert(track_b.hidden == before_select.hidden)
 assert(item_b.position == before_select.position and item_b.length == before_select.length)
 assert(arrange_start == 2 and arrange_end == 12)
 
-local missing, missing_error = adapter.select_source(project, "{10000004-0000-0000-0000-000000000004}")
+local missing, missing_error = source_items.select_source(project, "{10000004-0000-0000-0000-000000000004}")
 assert(missing == nil and missing_error == "source_missing")
 assert(#selected == 1 and selected[1] == item_b)
 
@@ -434,7 +446,7 @@ for _, current in ipairs(ambiguous_view.ideas) do
 end
 assert(ambiguous_rows["{00000002-0000-0000-0000-000000000002}"].source_status == "ambiguous")
 assert(ambiguous_rows["{00000001-0000-0000-0000-000000000001}"].source_status == "available")
-local ambiguous, ambiguous_error = adapter.select_source(project, "{10000002-0000-0000-0000-000000000002}")
+local ambiguous, ambiguous_error = source_items.select_source(project, "{10000002-0000-0000-0000-000000000002}")
 assert(ambiguous == nil and ambiguous_error == "source_ambiguous")
 assert(#selected == 1 and selected[1] == item_b)
 items[#items] = nil
@@ -451,7 +463,7 @@ assert(unavailable_rows["{00000001-0000-0000-0000-000000000001}"].source_kind ==
 assert(unavailable_rows["{00000002-0000-0000-0000-000000000002}"].source_status == "unavailable")
 assert(unavailable_rows["{00000002-0000-0000-0000-000000000002}"].source_kind == "unknown")
 assert(unavailable_rows["{00000003-0000-0000-0000-000000000003}"].source_status == "available")
-assert(adapter.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
+assert(source_items.select_source(project, "{10000002-0000-0000-0000-000000000002}"))
 item_b.take = take_b
 take_a.source = source_a
 
@@ -475,7 +487,7 @@ local item_e = {
 }
 items[#items + 1] = item_e
 selected = { item_e }
-local blank_midi = assert(adapter.selected_item(project))
+local blank_midi = assert(source_items.selected_item(project))
 assert(blank_midi.suggested_name == "")
 assert(blank_midi.source_kind == "midi")
 local second = assert(adapter.create(project, "{10000005-0000-0000-0000-000000000005}", "Idea A"))
@@ -547,12 +559,8 @@ state_write_hook = function(track, value)
   return true, value
 end
 local calls_before_exception = #calls
-local exception_ok, exception_trace = pcall(
-  adapter.create,
-  project,
-  "{10000006-0000-0000-0000-000000000006}",
-  "Exception"
-)
+local exception_ok, exception_trace =
+  pcall(adapter.create, project, "{10000006-0000-0000-0000-000000000006}", "Exception")
 state_write_hook = nil
 assert(exception_ok == false and exception_trace:find("unexpected write failure", 1, true))
 assert(exception_writes == 2)
@@ -581,7 +589,8 @@ state_write_hook = function(track, value)
   track.state = failed_restore_writes == 1 and (value .. "-mismatch") or "restore-mismatch"
   return true, track.state
 end
-local restore_failed, restore_error = adapter.create(project, "{10000006-0000-0000-0000-000000000006}", "Restore failure")
+local restore_failed, restore_error =
+  adapter.create(project, "{10000006-0000-0000-0000-000000000006}", "Restore failure")
 state_write_hook = nil
 assert(restore_failed == nil and restore_error == "state_restore_failed")
 assert(failed_restore_writes == 2)
@@ -590,7 +599,11 @@ master.state = state_before_mismatch
 local duplicate_record = codec.encode({
   version = 1,
   ideas = {
-    { id = "{00000001-0000-0000-0000-000000000001}", name = "Duplicate", source_item_guid = "{10000007-0000-0000-0000-000000000007}" },
+    {
+      id = "{00000001-0000-0000-0000-000000000001}",
+      name = "Duplicate",
+      source_item_guid = "{10000007-0000-0000-0000-000000000007}",
+    },
   },
 })
 master.state = duplicate_record .. "|" .. duplicate_record:sub(3)
@@ -600,10 +613,7 @@ assert(duplicate == nil and duplicate_error == "state_invalid")
 master.state = original_state
 master.v2_state = ""
 local grammar_adapter = require("hit.reaper.grammar")
-local grammar_view = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
+local grammar_view = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 assert(grammar_view.version == 2)
 assert(grammar_view.families.Main.variants[1].label == "A")
 assert(grammar_view.families.Main.variants[1].source.track_name == "Bass")
@@ -611,11 +621,8 @@ assert(master.v2_state == "", "opening legacy Idea must not write V2")
 
 selected = { item_a, item_e }
 item_a.selected = true
-local classified, classify_error, classify_outcome = grammar_adapter.execute(
-  project,
-  "{00000002-0000-0000-0000-000000000002}",
-  { type = "bulk_add" }
-)
+local classified, classify_error, classify_outcome =
+  grammar_adapter.execute(project, "{00000002-0000-0000-0000-000000000002}", { type = "bulk_add" })
 assert(classified, classify_error)
 assert(classify_outcome.added == 2)
 assert(#classified.families.Main.variants == 3)
@@ -627,21 +634,13 @@ assert(calls[#calls - 2] == "write")
 assert(calls[#calls - 1]:match("^end:HIT: Add Main Variants"))
 assert(calls[#calls] == "dirty")
 
-local saved_v2 = master.v2_state
-local reopened = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
-assert(reopened.families.Main.variants[2].component_id
-  == classified.families.Main.variants[2].component_id)
+local reopened = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
+assert(reopened.families.Main.variants[2].component_id == classified.families.Main.variants[2].component_id)
 assert(reopened.families.Main.variants[3].source_item_guid == item_e.guid)
 local original_item_b_length = item_b.length
 item_b.length = original_item_b_length + 2
 item_b.selected = true
-local resized = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
+local resized = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 assert(resized.families.Main.variants[1].source.duration == item_b.length)
 assert(resized.families.Main.variants[1].source.selected)
 item_b.length = original_item_b_length
@@ -673,14 +672,10 @@ v2_write_hook = function(track, value)
   track.v2_state = failed_split_writes == 1 and value .. "-mismatch" or value
   return true, track.v2_state
 end
-local failed_split, failed_split_error = grammar_adapter.execute(
-  project,
-  "{00000002-0000-0000-0000-000000000002}",
-  {
-    type = "split",
-    component_id = split_view.families.Main.variants[2].component_id,
-  }
-)
+local failed_split, failed_split_error = grammar_adapter.execute(project, "{00000002-0000-0000-0000-000000000002}", {
+  type = "split",
+  component_id = split_view.families.Main.variants[2].component_id,
+})
 v2_write_hook = nil
 assert(failed_split == nil and failed_split_error == "state_write_failed")
 assert(#items == item_count_before_failed_split)
@@ -693,30 +688,21 @@ v2_write_hook = function(track, value)
   track.v2_state = v2_writes == 1 and value .. "-mismatch" or value
   return true, track.v2_state
 end
-local failed_classification, failed_classification_error = grammar_adapter.execute(
-  project,
-  "{00000002-0000-0000-0000-000000000002}",
-  {
+local failed_classification, failed_classification_error =
+  grammar_adapter.execute(project, "{00000002-0000-0000-0000-000000000002}", {
     type = "set_intensity",
     component_id = reopened.families.Main.variants[1].component_id,
     intensity = 5,
-  }
-)
+  })
 v2_write_hook = nil
 assert(failed_classification == nil and failed_classification_error == "state_write_failed")
 assert(master.v2_state == split_saved_v2)
 
-local recovery_baseline = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
+assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 local before_ordinary_split_state = master.v2_state
 local ordinary_right = assert(reaper.SplitMediaItem(item_a, item_a.position + item_a.length / 2))
 assert(master.v2_state == before_ordinary_split_state)
-local with_recovery = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
+local with_recovery = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 assert(#with_recovery.recovery == 1)
 local recovery = with_recovery.recovery[1]
 assert(recovery.origin_source_item_guid == item_a.guid)
@@ -735,38 +721,22 @@ for _, variant in ipairs(attached.families.Main.variants) do
 end
 assert(attached_found)
 
-local dismiss_baseline = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
+assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 local dismiss_right = assert(reaper.SplitMediaItem(item_b, item_b.position + item_b.length / 2))
-local dismiss_view = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
+local dismiss_view = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 assert(#dismiss_view.recovery == 1)
 assert(dismiss_view.recovery[1].source_item_guid == dismiss_right.guid)
-local dismissed, dismiss_error = grammar_adapter.execute(
-  project,
-  "{00000002-0000-0000-0000-000000000002}",
-  {
-    type = "dismiss_recovery",
-    fingerprint = dismiss_view.recovery[1].fingerprint,
-  }
-)
+local dismissed, dismiss_error = grammar_adapter.execute(project, "{00000002-0000-0000-0000-000000000002}", {
+  type = "dismiss_recovery",
+  fingerprint = dismiss_view.recovery[1].fingerprint,
+})
 assert(dismissed, dismiss_error)
 assert(#dismissed.recovery == 0)
 assert(#dismissed.dismissed_recoveries == 1)
-assert(#assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-)).recovery == 0)
+assert(#assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}")).recovery == 0)
 
 master.v2_state = "3|future"
-local newer_grammar = assert(grammar_adapter.open(
-  project,
-  "{00000002-0000-0000-0000-000000000002}"
-))
+local newer_grammar = assert(grammar_adapter.open(project, "{00000002-0000-0000-0000-000000000002}"))
 assert(newer_grammar.read_only and newer_grammar.error == "state_version_unsupported")
 master.v2_state = split_saved_v2
 

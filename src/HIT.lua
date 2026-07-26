@@ -73,11 +73,8 @@ local function load_imgui()
   return result
 end
 
-local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
-  local support = lifecycle.host_support(
-    app.GetAppVersion(),
-    app.APIExists("ImGui_GetBuiltinPath")
-  )
+local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items)
+  local support = lifecycle.host_support(app.GetAppVersion(), app.APIExists("ImGui_GetBuiltinPath"))
 
   if not support.ok then
     if support.error == "reaper_version" then
@@ -121,9 +118,7 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
 
   local function initial_grammar_state(loaded_grammar)
     local state = { selected_family = "Main" }
-    local main = loaded_grammar
-      and loaded_grammar.families
-      and loaded_grammar.families.Main
+    local main = loaded_grammar and loaded_grammar.families and loaded_grammar.families.Main
     if main and main.default_component_id then
       state.selected_component_id = main.default_component_id
       for _, variant in ipairs(main.variants) do
@@ -185,10 +180,7 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
     end
 
     if grammar_idea_id then
-      local loaded_grammar, grammar_error = grammar_adapter.open(
-        bound_project,
-        grammar_idea_id
-      )
+      local loaded_grammar, grammar_error = grammar_adapter.open(bound_project, grammar_idea_id)
       if loaded_grammar then
         grammar_view = loaded_grammar
       else
@@ -203,10 +195,8 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
   end
 
   local function frame()
-    local access = lifecycle.project_access(
-      app.ValidatePtr(bound_project, "ReaProject*"),
-      app.EnumProjects(-1) == bound_project
-    )
+    local access =
+      lifecycle.project_access(app.ValidatePtr(bound_project, "ReaProject*"), app.EnumProjects(-1) == bound_project)
 
     if access.should_close then
       return false
@@ -220,7 +210,7 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
     local candidate
     local selection_error
     if access.can_mutate then
-      candidate, selection_error = ideas.selected_item(bound_project)
+      candidate, selection_error = source_items.selected_item(bound_project)
       if not draft_dirty then
         local candidate_guid = candidate and candidate.source_item_guid
         if candidate_guid ~= draft_guid then
@@ -259,14 +249,8 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
     if visible then
       if grammar_idea_id and grammar_view then
         local selected_source_guid = candidate and candidate.source_item_guid
-        if selected_source_guid
-          and grammar_state.reaper_source_guid ~= selected_source_guid
-        then
-          grammar_ui.select_source_variant(
-            grammar_view,
-            grammar_state,
-            selected_source_guid
-          )
+        if selected_source_guid and grammar_state.reaper_source_guid ~= selected_source_guid then
+          grammar_ui.select_source_variant(grammar_view, grammar_state, selected_source_guid)
           grammar_state.reaper_source_guid = selected_source_guid
         end
         if ImGui.Button(context, "Back to Ideas") then
@@ -275,23 +259,13 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
           grammar_state = {}
         else
           ImGui.SameLine(context)
-          local grammar_status = grammar_view.classified and "Classified"
-            or "Main unavailable"
-          ImGui.Text(
-            context,
-            (grammar_view.name or "Unavailable Idea")
-              .. " · Phrases · "
-              .. grammar_status
-          )
+          local grammar_status = grammar_view.classified and "Classified" or "Main unavailable"
+          ImGui.Text(context, (grammar_view.name or "Unavailable Idea") .. " · Phrases · " .. grammar_status)
           local function execute_grammar(command)
             if not access.can_mutate then
               return nil, "project_inactive"
             end
-            local next_view, command_error, outcome = grammar_adapter.execute(
-              bound_project,
-              grammar_idea_id,
-              command
-            )
+            local next_view, command_error, outcome = grammar_adapter.execute(bound_project, grammar_idea_id, command)
             if next_view then
               grammar_view = next_view
               loaded_revision = app.GetProjectStateChangeCount(bound_project)
@@ -299,21 +273,12 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
             return next_view, command_error, outcome
           end
           local previous_component_id = grammar_state.selected_component_id
-          grammar_view = grammar_ui.draw(
-            ImGui,
-            context,
-            grammar_view,
-            grammar_state,
-            access.can_mutate,
-            execute_grammar
-          )
+          grammar_view =
+            grammar_ui.draw(ImGui, context, grammar_view, grammar_state, access.can_mutate, execute_grammar)
           if grammar_state.selected_component_id ~= previous_component_id then
-            local source_item_guid = grammar_ui.selected_source_guid(
-              grammar_view,
-              grammar_state
-            )
+            local source_item_guid = grammar_ui.selected_source_guid(grammar_view, grammar_state)
             if source_item_guid then
-              local selected = ideas.select_source(bound_project, source_item_guid)
+              local selected = source_items.select_source(bound_project, source_item_guid)
               if selected then
                 grammar_state.reaper_source_guid = source_item_guid
               end
@@ -325,206 +290,175 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui)
         ImGui.Separator(context)
         if access.can_mutate then
           if candidate then
-            local selected_name = candidate.suggested_name ~= "" and candidate.suggested_name
-              or "Unnamed item"
-            ImGui.Text(
-              context,
-              "Selected " .. candidate.source_kind .. ": " .. selected_name
-            )
+            local selected_name = candidate.suggested_name ~= "" and candidate.suggested_name or "Unnamed item"
+            ImGui.Text(context, "Selected " .. candidate.source_kind .. ": " .. selected_name)
           else
             ImGui.TextWrapped(context, idea_error_message(selection_error))
           end
         else
-          ImGui.TextWrapped(
-            context,
-            "Another project is active. Return to " .. project_name .. " or relaunch HIT."
-          )
+          ImGui.TextWrapped(context, "Another project is active. Return to " .. project_name .. " or relaunch HIT.")
         end
 
-      local selection_matches_draft = candidate
-        and draft_guid == candidate.source_item_guid
-      local linked = candidate and idea_for_source(candidate.source_item_guid)
-      local draft_detached = draft_dirty and not selection_matches_draft
-      local can_edit = access.can_mutate and (candidate ~= nil or draft_guid ~= nil)
+        local selection_matches_draft = candidate and draft_guid == candidate.source_item_guid
+        local linked = candidate and idea_for_source(candidate.source_item_guid)
+        local draft_detached = draft_dirty and not selection_matches_draft
+        local can_edit = access.can_mutate and (candidate ~= nil or draft_guid ~= nil)
 
-      ImGui.BeginDisabled(context, not can_edit)
-      local previous_name = draft_name
-      local enter_pressed
-      enter_pressed, draft_name = ImGui.InputText(
-        context,
-        "Idea name",
-        draft_name,
-        ImGui.InputTextFlags_EnterReturnsTrue
-      )
-      ImGui.EndDisabled(context)
-      if draft_name ~= previous_name then
-        draft_dirty = true
-        feedback = nil
-      end
-
-      if draft_detached then
-        ImGui.TextWrapped(
-          context,
-          "Selection changed. Draft kept; select its original item or explicitly reset it."
-        )
-
-        ImGui.BeginDisabled(context, not access.can_mutate or not draft_guid)
-        if ImGui.Button(context, "Select original") then
-          local selected, select_error = ideas.select_source(bound_project, draft_guid)
-          if selected then
-            feedback = { text = "Selected original draft source." }
-            reload_ideas()
-          else
-            feedback = { text = idea_error_message(select_error) }
-          end
-        end
+        ImGui.BeginDisabled(context, not can_edit)
+        local previous_name = draft_name
+        local enter_pressed
+        enter_pressed, draft_name =
+          ImGui.InputText(context, "Idea name", draft_name, ImGui.InputTextFlags_EnterReturnsTrue)
         ImGui.EndDisabled(context)
-
-        ImGui.BeginDisabled(context, not access.can_mutate or not candidate)
-        if ImGui.Button(context, "Use current selection") then
-          draft_guid = candidate.source_item_guid
-          draft_name = candidate.suggested_name
-          draft_dirty = false
+        if draft_name ~= previous_name then
+          draft_dirty = true
           feedback = nil
-          linked = idea_for_source(candidate.source_item_guid)
-          highlighted_id = linked and linked.id or nil
         end
-        ImGui.EndDisabled(context)
-      end
 
-      local create_reason
-      if not access.can_mutate then
-        create_reason = "Return to this project to create an Idea."
-      elseif view_error then
-        create_reason = idea_error_message(view_error)
-      elseif not candidate then
-        create_reason = "Select one available item to create an Idea."
-      elseif not selection_matches_draft then
-        create_reason = "Select the draft's original item or use the current selection."
-      elseif linked then
-        create_reason = "Selected item is already Idea " .. linked.name .. "."
-      else
-        local _, name_error = ideas.validate_name(draft_name)
-        if name_error then
-          create_reason = idea_error_message(name_error)
-        end
-      end
-      local can_create = create_reason == nil
-      local create_requested = enter_pressed and can_create
+        if draft_detached then
+          ImGui.TextWrapped(context, "Selection changed. Draft kept; select its original item or explicitly reset it.")
 
-      ImGui.BeginDisabled(context, not can_create)
-      if ImGui.Button(context, "Create Idea") then
-        create_requested = true
-      end
-      ImGui.EndDisabled(context)
-
-      if create_reason then
-        ImGui.TextDisabled(context, create_reason)
-      end
-
-      if create_requested then
-        local created, create_error, existing = ideas.create(
-          bound_project,
-          candidate.source_item_guid,
-          draft_name
-        )
-        if created then
-          draft_guid = created.source_item_guid
-          draft_name = ""
-          draft_dirty = false
-          highlighted_id = created.id
-          feedback = {
-            text = "Created " .. created.name .. ".",
-            created_id = created.id,
-          }
-          reload_ideas()
-        elseif create_error == "source_already_registered" and existing then
-          draft_guid = existing.source_item_guid
-          draft_name = ""
-          draft_dirty = false
-          highlighted_id = existing.id
-          feedback = { text = "Already an Idea: " .. existing.name .. "." }
-        else
-          feedback = { text = idea_error_message(create_error) }
-        end
-      end
-
-      if feedback then
-        ImGui.TextWrapped(context, feedback.text)
-      end
-
-      ImGui.Separator(context)
-      ImGui.Text(context, "Ideas")
-      if view_error then
-        ImGui.TextWrapped(context, idea_error_message(view_error))
-      elseif #idea_view.ideas == 0 then
-        ImGui.TextDisabled(context, "No Ideas yet.")
-      else
-        for _, current in ipairs(idea_view.ideas) do
-          local selected_prefix = (current.selected or current.id == highlighted_id)
-              and "Selected Idea: "
-            or ""
-          ImGui.Text(context, selected_prefix .. current.name)
-          if current.source_status == "missing" then
-            ImGui.TextWrapped(context, "Source item missing.")
-          elseif current.source_status == "ambiguous" then
-            ImGui.TextWrapped(context, "Several items share this source identity.")
-          else
-            ImGui.TextDisabled(
-              context,
-              "Source: " .. current.source_name .. " (" .. current.source_kind .. ")"
-            )
-            ImGui.TextDisabled(context, "Track: " .. current.track_name)
-            ImGui.TextDisabled(
-              context,
-              "Position: " .. current.position_text .. ", duration: " .. current.duration_text
-            )
-            if current.track_hidden then
-              ImGui.TextWrapped(context, "Source track is hidden.")
-            end
-            if current.source_status == "unavailable" then
-              ImGui.TextWrapped(context, "Source media is unavailable.")
-            end
-          end
-
-          ImGui.BeginDisabled(
-            context,
-            not access.can_mutate
-              or current.source_status == "missing"
-              or current.source_status == "ambiguous"
-          )
-          if ImGui.Button(context, "Select source###select_" .. current.id) then
-            local selected, select_error = ideas.select_source(
-              bound_project,
-              current.source_item_guid
-            )
+          ImGui.BeginDisabled(context, not access.can_mutate or not draft_guid)
+          if ImGui.Button(context, "Select original") then
+            local selected, select_error = source_items.select_source(bound_project, draft_guid)
             if selected then
-              highlighted_id = current.id
-              feedback = { text = "Selected source for " .. current.name .. "." }
+              feedback = { text = "Selected original draft source." }
               reload_ideas()
             else
               feedback = { text = idea_error_message(select_error) }
             end
           end
           ImGui.EndDisabled(context)
-          ImGui.SameLine(context)
-          if ImGui.Button(context, "Phrases###grammar_" .. current.id) then
-            local loaded_grammar, grammar_error = grammar_adapter.open(
-              bound_project,
-              current.id
-            )
-            grammar_idea_id = current.id
-            grammar_view = loaded_grammar or {
-              idea_id = current.id,
-              name = current.name,
-              read_only = true,
-              error = grammar_error,
-              families = {},
-            }
-            grammar_state = initial_grammar_state(grammar_view)
+
+          ImGui.BeginDisabled(context, not access.can_mutate or not candidate)
+          if ImGui.Button(context, "Use current selection") then
+            draft_guid = candidate.source_item_guid
+            draft_name = candidate.suggested_name
+            draft_dirty = false
+            feedback = nil
+            linked = idea_for_source(candidate.source_item_guid)
+            highlighted_id = linked and linked.id or nil
+          end
+          ImGui.EndDisabled(context)
+        end
+
+        local create_reason
+        if not access.can_mutate then
+          create_reason = "Return to this project to create an Idea."
+        elseif view_error then
+          create_reason = idea_error_message(view_error)
+        elseif not candidate then
+          create_reason = "Select one available item to create an Idea."
+        elseif not selection_matches_draft then
+          create_reason = "Select the draft's original item or use the current selection."
+        elseif linked then
+          create_reason = "Selected item is already Idea " .. linked.name .. "."
+        else
+          local _, name_error = ideas.validate_name(draft_name)
+          if name_error then
+            create_reason = idea_error_message(name_error)
           end
         end
-      end
+        local can_create = create_reason == nil
+        local create_requested = enter_pressed and can_create
+
+        ImGui.BeginDisabled(context, not can_create)
+        if ImGui.Button(context, "Create Idea") then
+          create_requested = true
+        end
+        ImGui.EndDisabled(context)
+
+        if create_reason then
+          ImGui.TextDisabled(context, create_reason)
+        end
+
+        if create_requested then
+          local created, create_error, existing = ideas.create(bound_project, candidate.source_item_guid, draft_name)
+          if created then
+            draft_guid = created.source_item_guid
+            draft_name = ""
+            draft_dirty = false
+            highlighted_id = created.id
+            feedback = {
+              text = "Created " .. created.name .. ".",
+              created_id = created.id,
+            }
+            reload_ideas()
+          elseif create_error == "source_already_registered" and existing then
+            draft_guid = existing.source_item_guid
+            draft_name = ""
+            draft_dirty = false
+            highlighted_id = existing.id
+            feedback = { text = "Already an Idea: " .. existing.name .. "." }
+          else
+            feedback = { text = idea_error_message(create_error) }
+          end
+        end
+
+        if feedback then
+          ImGui.TextWrapped(context, feedback.text)
+        end
+
+        ImGui.Separator(context)
+        ImGui.Text(context, "Ideas")
+        if view_error then
+          ImGui.TextWrapped(context, idea_error_message(view_error))
+        elseif #idea_view.ideas == 0 then
+          ImGui.TextDisabled(context, "No Ideas yet.")
+        else
+          for _, current in ipairs(idea_view.ideas) do
+            local selected_prefix = (current.selected or current.id == highlighted_id) and "Selected Idea: " or ""
+            ImGui.Text(context, selected_prefix .. current.name)
+            if current.source_status == "missing" then
+              ImGui.TextWrapped(context, "Source item missing.")
+            elseif current.source_status == "ambiguous" then
+              ImGui.TextWrapped(context, "Several items share this source identity.")
+            else
+              ImGui.TextDisabled(context, "Source: " .. current.source_name .. " (" .. current.source_kind .. ")")
+              ImGui.TextDisabled(context, "Track: " .. current.track_name)
+              ImGui.TextDisabled(
+                context,
+                "Position: " .. current.position_text .. ", duration: " .. current.duration_text
+              )
+              if current.track_hidden then
+                ImGui.TextWrapped(context, "Source track is hidden.")
+              end
+              if current.source_status == "unavailable" then
+                ImGui.TextWrapped(context, "Source media is unavailable.")
+              end
+            end
+
+            ImGui.BeginDisabled(
+              context,
+              not access.can_mutate or current.source_status == "missing" or current.source_status == "ambiguous"
+            )
+            if ImGui.Button(context, "Select source###select_" .. current.id) then
+              local selected, select_error = source_items.select_source(bound_project, current.source_item_guid)
+              if selected then
+                highlighted_id = current.id
+                feedback = { text = "Selected source for " .. current.name .. "." }
+                reload_ideas()
+              else
+                feedback = { text = idea_error_message(select_error) }
+              end
+            end
+            ImGui.EndDisabled(context)
+            ImGui.SameLine(context)
+            if ImGui.Button(context, "Phrases###grammar_" .. current.id) then
+              local loaded_grammar, grammar_error = grammar_adapter.open(bound_project, current.id)
+              grammar_idea_id = current.id
+              grammar_view = loaded_grammar
+                or {
+                  idea_id = current.id,
+                  name = current.name,
+                  read_only = true,
+                  error = grammar_error,
+                  families = {},
+                }
+              grammar_state = initial_grammar_state(grammar_view)
+            end
+          end
+        end
       end
     end
 
@@ -561,7 +495,8 @@ local function main()
     require("hit.lifecycle"),
     require("hit.reaper.ideas"),
     require("hit.reaper.grammar"),
-    require("hit.ui.imgui.grammar")
+    require("hit.ui.imgui.grammar"),
+    require("hit.reaper.source_items")
   )
 end
 

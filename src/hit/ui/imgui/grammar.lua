@@ -37,12 +37,7 @@ local COLOUR = {
 }
 
 function view.push_theme(ImGui, context)
-  ImGui.PushStyleVar(
-    context,
-    ImGui.StyleVar_WindowPadding,
-    UI.window_padding,
-    UI.window_padding
-  )
+  ImGui.PushStyleVar(context, ImGui.StyleVar_WindowPadding, UI.window_padding, UI.window_padding)
   ImGui.PushStyleVar(context, ImGui.StyleVar_ItemSpacing, UI.gap, UI.gap)
   ImGui.PushStyleVar(context, ImGui.StyleVar_FramePadding, 10, 7)
   ImGui.PushStyleVar(context, ImGui.StyleVar_WindowRounding, UI.panel_rounding)
@@ -143,12 +138,7 @@ function view.selected_source_guid(grammar_view, state)
 end
 
 local function begin_panel(ImGui, context, id, title, colour)
-  ImGui.PushStyleVar(
-    context,
-    ImGui.StyleVar_WindowPadding,
-    UI.panel_padding,
-    UI.panel_padding
-  )
+  ImGui.PushStyleVar(context, ImGui.StyleVar_WindowPadding, UI.panel_padding, UI.panel_padding)
   ImGui.PushStyleColor(context, ImGui.Col_ChildBg, colour or COLOUR.panel)
   local visible = ImGui.BeginChild(
     context,
@@ -176,7 +166,9 @@ end
 local function run(state, execute, command)
   local next_view, error_code, outcome = execute(command)
   if next_view then
-    state.feedback = outcome and outcome.skipped and outcome.skipped > 0
+    state.feedback = outcome
+        and outcome.skipped
+        and outcome.skipped > 0
         and ("Added " .. outcome.added .. "; skipped " .. outcome.skipped .. " already classified.")
       or "Saved."
     return next_view
@@ -190,23 +182,20 @@ local function draw_families(ImGui, context, grammar_view, state)
     for index, family_name in ipairs(grammar_model.FAMILY_ORDER) do
       ImGui.TableSetColumnIndex(context, index - 1)
       local selected = state.selected_family == family_name
-      ImGui.PushStyleColor(
-        context,
-        ImGui.Col_Text,
-        selected and 0xFFFFFFFF or COLOUR.family[family_name]
-      )
+      ImGui.PushStyleColor(context, ImGui.Col_Text, selected and 0xFFFFFFFF or COLOUR.family[family_name])
       if selected then
         ImGui.PushStyleColor(context, ImGui.Col_Button, COLOUR.family[family_name])
         ImGui.PushStyleColor(context, ImGui.Col_ButtonHovered, COLOUR.family[family_name])
         ImGui.PushStyleColor(context, ImGui.Col_ButtonActive, COLOUR.family[family_name])
       end
-      if ImGui.Button(
-        context,
-        family_name .. " · " .. #grammar_view.families[family_name].variants
-          .. "###grammar_family_" .. family_name,
-        -1,
-        UI.button_height
-      ) then
+      if
+        ImGui.Button(
+          context,
+          family_name .. " · " .. #grammar_view.families[family_name].variants .. "###grammar_family_" .. family_name,
+          -1,
+          UI.button_height
+        )
+      then
         state.selected_family = family_name
         state.selected_component_id = nil
         state.rules_open = false
@@ -237,12 +226,14 @@ local function draw_variant_rows(ImGui, context, grammar_view, state, can_mutate
   end
 
   local function draw_table()
-    if not ImGui.BeginTable(
-      context,
-      "grammar_variant_table",
-      4,
-      ImGui.TableFlags_RowBg | ImGui.TableFlags_SizingStretchProp
-    ) then
+    if
+      not ImGui.BeginTable(
+        context,
+        "grammar_variant_table",
+        4,
+        ImGui.TableFlags_RowBg | ImGui.TableFlags_SizingStretchProp
+      )
+    then
       return
     end
     ImGui.TableSetupColumn(context, "###default", ImGui.TableColumnFlags_WidthFixed, 24)
@@ -257,20 +248,18 @@ local function draw_variant_rows(ImGui, context, grammar_view, state, can_mutate
         local marker_width = ImGui.CalcTextSize(context, "★")
         local marker_x, marker_y = ImGui.GetCursorScreenPos(context)
         local available_width = ImGui.GetContentRegionAvail(context)
-        ImGui.SetCursorScreenPos(
-          context,
-          marker_x + math.max(0, (available_width - marker_width) / 2),
-          marker_y
-        )
+        ImGui.SetCursorScreenPos(context, marker_x + math.max(0, (available_width - marker_width) / 2), marker_y)
         ImGui.TextColored(context, COLOUR.default, "★")
       end
       ImGui.TableSetColumnIndex(context, 1)
       local name = variant.name ~= "" and (" · " .. variant.name) or ""
-      if ImGui.Selectable(
-        context,
-        variant.label .. name .. "###variant_" .. variant.component_id,
-        state.selected_component_id == variant.component_id
-      ) then
+      if
+        ImGui.Selectable(
+          context,
+          variant.label .. name .. "###variant_" .. variant.component_id,
+          state.selected_component_id == variant.component_id
+        )
+      then
         state.selected_component_id = variant.component_id
         state.name_draft = variant.name
         state.rules_open = false
@@ -287,13 +276,8 @@ local function draw_variant_rows(ImGui, context, grammar_view, state, can_mutate
         end
       else
         ImGui.SetNextItemWidth(context, -1)
-        local changed, intensity = ImGui.SliderInt(
-          context,
-          "###intensity_" .. variant.component_id,
-          variant.intensity,
-          1,
-          5
-        )
+        local changed, intensity =
+          ImGui.SliderInt(context, "###intensity_" .. variant.component_id, variant.intensity, 1, 5)
         if changed then
           grammar_view = run(state, execute, {
             type = "set_intensity",
@@ -305,8 +289,7 @@ local function draw_variant_rows(ImGui, context, grammar_view, state, can_mutate
       ImGui.EndDisabled(context)
       ImGui.TableSetColumnIndex(context, 3)
       local colour = variant.source.status == "available" and COLOUR.available
-        or (variant.source.status == "missing" or variant.source.status == "ambiguous")
-          and COLOUR.error
+        or (variant.source.status == "missing" or variant.source.status == "ambiguous") and COLOUR.error
         or COLOUR.warning
       ImGui.TextColored(context, colour, status_text(variant))
     end
@@ -347,9 +330,7 @@ local function draw_targets(
     local blocked = not can_mutate
       or family_name == current_family
       or duplicate
-      or (command_type == "move"
-        and current_family == "Main"
-        and #grammar_view.families.Main.variants == 1)
+      or (command_type == "move" and current_family == "Main" and #grammar_view.families.Main.variants == 1)
     ImGui.BeginDisabled(context, blocked)
     if ImGui.SmallButton(context, family_name .. "###" .. command_type .. "_" .. family_name) then
       grammar_view = run(state, execute, {
@@ -382,12 +363,8 @@ local function draw_rules_editor(ImGui, context, rules, suffix)
     }
     for index, control in ipairs(controls) do
       ImGui.TableSetColumnIndex(context, index - 1)
-      rules[control[2]] = checkbox(
-        ImGui,
-        context,
-        control[1] .. "###" .. suffix .. "_" .. control[2],
-        rules[control[2]]
-      )
+      rules[control[2]] =
+        checkbox(ImGui, context, control[1] .. "###" .. suffix .. "_" .. control[2], rules[control[2]])
     end
     ImGui.EndTable(context)
   end
@@ -418,24 +395,15 @@ local function draw_inspector(ImGui, context, grammar_view, state, can_mutate, e
   local family = grammar_view.families[family_name]
   state.name_draft = state.name_draft == nil and variant.name or state.name_draft
 
-  local visible = begin_panel(
-    ImGui,
-    context,
-    "grammar_inspector",
-    family_name .. " - " .. variant.label,
-    COLOUR.panel_alt
-  )
+  local visible =
+    begin_panel(ImGui, context, "grammar_inspector", family_name .. " - " .. variant.label, COLOUR.panel_alt)
   if visible then
     ImGui.BeginDisabled(context, not can_mutate)
     ImGui.Text(context, "Name")
     ImGui.SetNextItemWidth(context, -1)
     local submitted
-    submitted, state.name_draft = ImGui.InputText(
-      context,
-      "###grammar_variant_name",
-      state.name_draft,
-      ImGui.InputTextFlags_EnterReturnsTrue
-    )
+    submitted, state.name_draft =
+      ImGui.InputText(context, "###grammar_variant_name", state.name_draft, ImGui.InputTextFlags_EnterReturnsTrue)
     if submitted then
       grammar_view = run(state, execute, {
         type = "set_name",
@@ -464,18 +432,8 @@ local function draw_inspector(ImGui, context, grammar_view, state, can_mutate, e
     ImGui.EndDisabled(context)
 
     ImGui.Separator(context)
-    grammar_view = draw_targets(
-      ImGui,
-      context,
-      "Move",
-      variant,
-      family_name,
-      grammar_view,
-      state,
-      can_mutate,
-      execute,
-      "move"
-    )
+    grammar_view =
+      draw_targets(ImGui, context, "Move", variant, family_name, grammar_view, state, can_mutate, execute, "move")
     grammar_view = draw_targets(
       ImGui,
       context,
@@ -488,11 +446,7 @@ local function draw_inspector(ImGui, context, grammar_view, state, can_mutate, e
       execute,
       "alternate_use"
     )
-    ImGui.BeginDisabled(
-      context,
-      not can_mutate
-        or variant.source.status ~= "available"
-    )
+    ImGui.BeginDisabled(context, not can_mutate or variant.source.status ~= "available")
     if ImGui.Button(context, "HIT Split") then
       grammar_view = run(state, execute, {
         type = "split",
@@ -510,12 +464,7 @@ local function draw_inspector(ImGui, context, grammar_view, state, can_mutate, e
       end
     else
       ImGui.Separator(context)
-      state.override_draft = checkbox(
-        ImGui,
-        context,
-        "Override family rules###variant_override",
-        state.override_draft
-      )
+      state.override_draft = checkbox(ImGui, context, "Override family rules###variant_override", state.override_draft)
       if state.override_draft then
         draw_rules_editor(ImGui, context, state.variant_rules_draft, "variant")
         ImGui.BeginDisabled(context, not can_mutate)
@@ -545,8 +494,7 @@ local function draw_inspector(ImGui, context, grammar_view, state, can_mutate, e
     ImGui.Separator(context)
     ImGui.TextDisabled(
       context,
-      "Source: " .. (variant.source.take_name or "")
-        .. " · Track: " .. (variant.source.track_name or "")
+      "Source: " .. (variant.source.take_name or "") .. " · Track: " .. (variant.source.track_name or "")
     )
     if variant.source.item_name and variant.source.item_name ~= "" then
       ImGui.TextDisabled(context, "Item: " .. variant.source.item_name)
@@ -554,8 +502,7 @@ local function draw_inspector(ImGui, context, grammar_view, state, can_mutate, e
     if variant.source.position_text then
       ImGui.TextDisabled(
         context,
-        "Position: " .. variant.source.position_text
-          .. ", duration: " .. variant.source.duration_text
+        "Position: " .. variant.source.position_text .. ", duration: " .. variant.source.duration_text
       )
     end
   end
@@ -579,31 +526,14 @@ function view.draw(ImGui, context, grammar_view, state, can_mutate, execute)
   end_panel(ImGui, context, family_visible)
   ImGui.Spacing(context)
 
-  local variants_visible = begin_panel(
-    ImGui,
-    context,
-    "grammar_variants_panel",
-    state.selected_family .. " Variants"
-  )
+  local variants_visible = begin_panel(ImGui, context, "grammar_variants_panel", state.selected_family .. " Variants")
   if variants_visible then
-    grammar_view = draw_variant_rows(
-      ImGui,
-      context,
-      grammar_view,
-      state,
-      can_mutate,
-      execute
-    )
+    grammar_view = draw_variant_rows(ImGui, context, grammar_view, state, can_mutate, execute)
     ImGui.Spacing(context)
     ImGui.BeginDisabled(context, not can_mutate)
     ImGui.PushStyleColor(context, ImGui.Col_Button, COLOUR.accent)
     ImGui.PushStyleColor(context, ImGui.Col_ButtonHovered, COLOUR.accent_hover)
-    if ImGui.Button(
-      context,
-      "Add selected items as Main Variants",
-      0,
-      UI.button_height
-    ) then
+    if ImGui.Button(context, "Add selected items as Main Variants", 0, UI.button_height) then
       grammar_view = run(state, execute, { type = "bulk_add" }) or grammar_view
     end
     ImGui.PopStyleColor(context, 2)
@@ -613,22 +543,12 @@ function view.draw(ImGui, context, grammar_view, state, can_mutate, execute)
     end
     ImGui.SameLine(context)
     if not state.family_rules_open then
-      if ImGui.Button(
-        context,
-        "Edit " .. state.selected_family .. " Phrase Rules###family_rules_open"
-      ) then
+      if ImGui.Button(context, "Edit " .. state.selected_family .. " Phrase Rules###family_rules_open") then
         state.family_rules_open = true
-        state.family_rules_draft = copy_rules(
-          grammar_view.families[state.selected_family].grammar
-        )
+        state.family_rules_draft = copy_rules(grammar_view.families[state.selected_family].grammar)
       end
     else
-      draw_rules_editor(
-        ImGui,
-        context,
-        state.family_rules_draft,
-        "selected_family"
-      )
+      draw_rules_editor(ImGui, context, state.family_rules_draft, "selected_family")
       ImGui.BeginDisabled(context, not can_mutate)
       if ImGui.Button(context, "Save family Phrase Rules") then
         grammar_view = run(state, execute, {
@@ -647,22 +567,9 @@ function view.draw(ImGui, context, grammar_view, state, can_mutate, execute)
   end_panel(ImGui, context, variants_visible)
   ImGui.Spacing(context)
 
-  grammar_view = draw_inspector(
-    ImGui,
-    context,
-    grammar_view,
-    state,
-    can_mutate,
-    execute
-  )
+  grammar_view = draw_inspector(ImGui, context, grammar_view, state, can_mutate, execute)
 
-  local recovery_visible = begin_panel(
-    ImGui,
-    context,
-    "grammar_recovery_panel",
-    "RECOVERY",
-    COLOUR.panel_alt
-  )
+  local recovery_visible = begin_panel(ImGui, context, "grammar_recovery_panel", "RECOVERY", COLOUR.panel_alt)
   if recovery_visible then
     if #grammar_view.recovery == 0 then
       ImGui.TextDisabled(context, "No likely ordinary splits.")
@@ -681,20 +588,14 @@ function view.draw(ImGui, context, grammar_view, state, can_mutate, execute)
             .. ". Matching source and offset."
         )
         ImGui.BeginDisabled(context, not can_mutate)
-        if ImGui.Button(
-          context,
-          "Attach###recovery_attach_" .. candidate.fingerprint
-        ) then
+        if ImGui.Button(context, "Attach###recovery_attach_" .. candidate.fingerprint) then
           grammar_view = run(state, execute, {
             type = "attach_recovery",
             fingerprint = candidate.fingerprint,
           }) or grammar_view
         end
         ImGui.SameLine(context)
-        if ImGui.Button(
-          context,
-          "Dismiss###recovery_dismiss_" .. candidate.fingerprint
-        ) then
+        if ImGui.Button(context, "Dismiss###recovery_dismiss_" .. candidate.fingerprint) then
           grammar_view = run(state, execute, {
             type = "dismiss_recovery",
             fingerprint = candidate.fingerprint,

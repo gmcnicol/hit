@@ -56,11 +56,7 @@ local function decode_rules(fields, offset)
     may_overlap = parse_boolean(fields[offset + 3]),
     allowed_next = {},
   }
-  if rules.may_begin == nil
-    or rules.may_repeat == nil
-    or rules.may_end == nil
-    or rules.may_overlap == nil
-  then
+  if rules.may_begin == nil or rules.may_repeat == nil or rules.may_end == nil or rules.may_overlap == nil then
     return nil
   end
   local allowed = state_codec.unescape(fields[offset + 4])
@@ -78,6 +74,8 @@ local function decode_rules(fields, offset)
   return rules
 end
 
+---@param state HitV2State
+---@return string
 function codec.encode(state)
   grammar.validate(state)
   local records = { "2" }
@@ -130,6 +128,9 @@ function codec.encode(state)
   return table.concat(records, "|")
 end
 
+---@param value unknown
+---@return HitV2State? state
+---@return string? error_code
 function codec.decode(value)
   if type(value) ~= "string" then
     return nil, "state_invalid"
@@ -188,7 +189,8 @@ function codec.decode(value)
       local override
       if fields[9] == "override" then
         override = decode_rules(fields, 10)
-      elseif fields[9] ~= "inherit"
+      elseif
+        fields[9] ~= "inherit"
         or fields[10] ~= ""
         or fields[11] ~= ""
         or fields[12] ~= ""
@@ -197,7 +199,11 @@ function codec.decode(value)
       then
         return nil, "state_invalid"
       end
-      if not family or not component_id or not source_item_guid or not name
+      if
+        not family
+        or not component_id
+        or not source_item_guid
+        or not name
         or (fields[8] ~= "" and not intensity)
         or (fields[9] == "override" and not override)
       then

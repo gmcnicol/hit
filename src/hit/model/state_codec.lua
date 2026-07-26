@@ -1,16 +1,25 @@
 local idea = require("hit.model.idea")
 local codec = {}
 
+---@class HitV1Idea
+---@field id string
+---@field name string
+---@field source_item_guid string
+
+---@class HitV1State
+---@field version 1
+---@field ideas HitV1Idea[]
+
 local function name_is_valid(name)
-  return name ~= ""
-    and name == name:match("^%s*(.-)%s*$")
-    and not name:find("[%z\1-\31\127]")
+  return name ~= "" and name == name:match("^%s*(.-)%s*$") and not name:find("[%z\1-\31\127]")
 end
 
 local function escape(value)
-  return (value:gsub("([^A-Za-z0-9%-%._~])", function(character)
-    return string.format("%%%02X", string.byte(character))
-  end))
+  return (
+    value:gsub("([^A-Za-z0-9%-%._~])", function(character)
+      return string.format("%%%02X", string.byte(character))
+    end)
+  )
 end
 
 local function unescape(value)
@@ -39,6 +48,8 @@ end
 codec.escape = escape
 codec.unescape = unescape
 
+---@param state HitV1State
+---@return string
 function codec.encode(state)
   assert(type(state) == "table", "state must be table")
   assert(state.version == 1, "state version must be 1")
@@ -58,10 +69,7 @@ function codec.encode(state)
     assert(idea.guid_is_valid(current.id), "state idea id must be GUID")
     assert(not ids[current.id], "state idea id must be unique")
     assert(type(current.name) == "string" and name_is_valid(current.name), "state idea name must be valid string")
-    assert(
-      idea.guid_is_valid(current.source_item_guid),
-      "state source_item_guid must be GUID"
-    )
+    assert(idea.guid_is_valid(current.source_item_guid), "state source_item_guid must be GUID")
     ids[current.id] = true
     records[#records + 1] = table.concat({
       escape(current.id),
@@ -73,6 +81,9 @@ function codec.encode(state)
   return table.concat(records, "|")
 end
 
+---@param value unknown
+---@return HitV1State? state
+---@return string? error_code
 function codec.decode(value)
   if value == nil or value == "" then
     return { version = 1, ideas = {} }

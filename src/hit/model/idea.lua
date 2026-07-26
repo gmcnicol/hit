@@ -2,9 +2,7 @@ local idea = {}
 
 function idea.guid_is_valid(value)
   return type(value) == "string"
-    and value:match(
-      "^%{%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x%}$"
-    ) ~= nil
+    and value:match("^%{%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x%}$") ~= nil
 end
 
 function idea.validate_name(proposed_name)
@@ -25,10 +23,7 @@ function idea.create(state, item_facts, proposed_name, idea_id)
   assert(state.version == 1, "state version must be 1")
   assert(type(state.ideas) == "table", "state ideas must be table")
   assert(type(item_facts) == "table", "item_facts must be table")
-  assert(
-    idea.guid_is_valid(item_facts.source_item_guid),
-    "source_item_guid must be GUID"
-  )
+  assert(idea.guid_is_valid(item_facts.source_item_guid), "source_item_guid must be GUID")
   assert(idea.guid_is_valid(idea_id), "idea_id must be GUID")
 
   local name, name_error = idea.validate_name(proposed_name)
