@@ -115,6 +115,11 @@ Werk MIDI and future sister-project boundaries.
 
 All direct REAPER API access: project recognition, track and item operations, metadata and generated-build lifecycle.
 
+`hit.reaper.source_items` owns source-item inspection, selection, GUID
+resolution and topology snapshots. Both Ideas and Phrases use this concrete
+module directly. Ideas retains V1/V2 creation and persistence; Phrases retains
+classification transactions and HIT Split mutation.
+
 ### ui/imgui
 
 The editor surface. ReaImGui should remain a presentation dependency rather than leaking into the domain model.
