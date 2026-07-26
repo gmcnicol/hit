@@ -24,6 +24,30 @@ local function show_unexpected_error(trace)
   app.ShowMessageBox("HIT stopped after an unexpected error. See the REAPER console for details.", "HIT", 0)
 end
 
+local IDEA_ERRORS = {
+  selection_none = "Select one audio or MIDI item.",
+  selection_multiple = "Select only one item.",
+  active_take_missing = "Selected item has no active take.",
+  source_unsupported = "Selected item has no supported audio or MIDI source.",
+  audio_unavailable = "Selected audio media is unavailable.",
+  source_guid_missing = "Selected item has no stable source identity.",
+  source_guid_invalid = "Selected item has an invalid source identity.",
+  selection_changed = "Selection changed. Review the item and try again.",
+  name_required = "Enter an Idea name.",
+  name_invalid = "Idea name cannot contain line breaks or control characters.",
+  source_already_registered = "Selected item is already registered as an Idea.",
+  state_invalid = "Stored HIT state is invalid.",
+  state_version_unsupported = "This project uses a newer HIT state version. Ideas are read-only.",
+  state_write_failed = "REAPER could not store the Idea.",
+  state_restore_failed = "REAPER could not restore HIT state after a failed write.",
+  source_missing = "Source item is missing.",
+  source_ambiguous = "Several items share this source identity.",
+}
+
+local function idea_error_message(error_code)
+  return IDEA_ERRORS[error_code] or ("Could not create Idea: " .. tostring(error_code))
+end
+
 local function load_imgui()
   package.path = app.ImGui_GetBuiltinPath() .. "/?.lua;" .. package.path
   local ok, result = pcall(function()
@@ -37,7 +61,7 @@ local function load_imgui()
   return result
 end
 
-local function start(lifecycle)
+local function start(lifecycle, ideas)
   local support = lifecycle.host_support(
     app.GetAppVersion(),
     app.APIExists("ImGui_GetBuiltinPath")
@@ -70,6 +94,63 @@ local function start(lifecycle)
   local context = ImGui.CreateContext("HIT", context_flags)
   local focus = true
   local open = true
+  local draft_guid
+  local draft_name = ""
+  local draft_dirty = false
+  local idea_view = { ideas = {} }
+  local view_error
+  local loaded_revision
+  local feedback
+  local highlighted_id
+
+  local function idea_for_source(source_item_guid)
+    if not source_item_guid then
+      return nil
+    end
+    for _, current in ipairs(idea_view.ideas) do
+      if current.source_item_guid == source_item_guid then
+        return current
+      end
+    end
+  end
+
+  local function reload_ideas()
+    local loaded, load_error = ideas.load(bound_project)
+    loaded_revision = app.GetProjectStateChangeCount(bound_project)
+    if loaded then
+      idea_view = loaded
+      view_error = nil
+    else
+      idea_view = { ideas = {} }
+      view_error = load_error
+    end
+
+    if feedback and feedback.created_id then
+      local created_still_exists = false
+      for _, current in ipairs(idea_view.ideas) do
+        if current.id == feedback.created_id then
+          created_still_exists = true
+          break
+        end
+      end
+      if not created_still_exists then
+        feedback = nil
+      end
+    end
+
+    if highlighted_id then
+      local highlighted_exists = false
+      for _, current in ipairs(idea_view.ideas) do
+        if current.id == highlighted_id then
+          highlighted_exists = true
+          break
+        end
+      end
+      if not highlighted_exists then
+        highlighted_id = nil
+      end
+    end
+  end
 
   local function frame()
     local access = lifecycle.project_access(
@@ -79,6 +160,32 @@ local function start(lifecycle)
 
     if access.should_close then
       return false
+    end
+
+    local revision = app.GetProjectStateChangeCount(bound_project)
+    if loaded_revision ~= revision then
+      reload_ideas()
+    end
+
+    local candidate
+    local selection_error
+    if access.can_mutate then
+      candidate, selection_error = ideas.selected_item(bound_project)
+      if not draft_dirty then
+        local candidate_guid = candidate and candidate.source_item_guid
+        if candidate_guid ~= draft_guid then
+          draft_guid = candidate_guid
+          draft_name = candidate and candidate.suggested_name or ""
+          feedback = nil
+        end
+      end
+
+      local linked = candidate and idea_for_source(candidate.source_item_guid)
+      if linked then
+        highlighted_id = linked.id
+      elseif not draft_dirty then
+        highlighted_id = nil
+      end
     end
 
     local project_name = app.GetProjectName(bound_project)
@@ -91,7 +198,7 @@ local function start(lifecycle)
       ImGui.SetNextWindowFocus(context)
       focus = false
     end
-    ImGui.SetNextWindowSize(context, 520, 220, ImGui.Cond_FirstUseEver)
+    ImGui.SetNextWindowSize(context, 560, 560, ImGui.Cond_FirstUseEver)
     local visible
     visible, open = ImGui.Begin(context, "HIT - " .. project_name .. "###HIT", open)
 
@@ -100,7 +207,16 @@ local function start(lifecycle)
       ImGui.Separator(context)
 
       if access.can_mutate then
-        ImGui.Text(context, "HIT is ready.")
+        if candidate then
+          local selected_name = candidate.suggested_name ~= "" and candidate.suggested_name
+            or "Unnamed item"
+          ImGui.Text(
+            context,
+            "Selected " .. candidate.source_kind .. ": " .. selected_name
+          )
+        else
+          ImGui.TextWrapped(context, idea_error_message(selection_error))
+        end
       else
         ImGui.TextWrapped(
           context,
@@ -108,7 +224,174 @@ local function start(lifecycle)
         )
       end
 
-      ImGui.TextDisabled(context, "Idea creation arrives in the next slice.")
+      local selection_matches_draft = candidate
+        and draft_guid == candidate.source_item_guid
+      local linked = candidate and idea_for_source(candidate.source_item_guid)
+      local draft_detached = draft_dirty and not selection_matches_draft
+      local can_edit = access.can_mutate and (candidate ~= nil or draft_guid ~= nil)
+
+      ImGui.BeginDisabled(context, not can_edit)
+      local previous_name = draft_name
+      local enter_pressed
+      enter_pressed, draft_name = ImGui.InputText(
+        context,
+        "Idea name",
+        draft_name,
+        ImGui.InputTextFlags_EnterReturnsTrue
+      )
+      ImGui.EndDisabled(context)
+      if draft_name ~= previous_name then
+        draft_dirty = true
+        feedback = nil
+      end
+
+      if draft_detached then
+        ImGui.TextWrapped(
+          context,
+          "Selection changed. Draft kept; select its original item or explicitly reset it."
+        )
+
+        ImGui.BeginDisabled(context, not access.can_mutate or not draft_guid)
+        if ImGui.Button(context, "Select original") then
+          local selected, select_error = ideas.select_source(bound_project, draft_guid)
+          if selected then
+            feedback = { text = "Selected original draft source." }
+            reload_ideas()
+          else
+            feedback = { text = idea_error_message(select_error) }
+          end
+        end
+        ImGui.EndDisabled(context)
+
+        ImGui.BeginDisabled(context, not access.can_mutate or not candidate)
+        if ImGui.Button(context, "Use current selection") then
+          draft_guid = candidate.source_item_guid
+          draft_name = candidate.suggested_name
+          draft_dirty = false
+          feedback = nil
+          linked = idea_for_source(candidate.source_item_guid)
+          highlighted_id = linked and linked.id or nil
+        end
+        ImGui.EndDisabled(context)
+      end
+
+      local create_reason
+      if not access.can_mutate then
+        create_reason = "Return to this project to create an Idea."
+      elseif view_error then
+        create_reason = idea_error_message(view_error)
+      elseif not candidate then
+        create_reason = "Select one available item to create an Idea."
+      elseif not selection_matches_draft then
+        create_reason = "Select the draft's original item or use the current selection."
+      elseif linked then
+        create_reason = "Selected item is already Idea " .. linked.name .. "."
+      else
+        local _, name_error = ideas.validate_name(draft_name)
+        if name_error then
+          create_reason = idea_error_message(name_error)
+        end
+      end
+      local can_create = create_reason == nil
+      local create_requested = enter_pressed and can_create
+
+      ImGui.BeginDisabled(context, not can_create)
+      if ImGui.Button(context, "Create Idea") then
+        create_requested = true
+      end
+      ImGui.EndDisabled(context)
+
+      if create_reason then
+        ImGui.TextDisabled(context, create_reason)
+      end
+
+      if create_requested then
+        local created, create_error, existing = ideas.create(
+          bound_project,
+          candidate.source_item_guid,
+          draft_name
+        )
+        if created then
+          draft_guid = created.source_item_guid
+          draft_name = ""
+          draft_dirty = false
+          highlighted_id = created.id
+          feedback = {
+            text = "Created " .. created.name .. ".",
+            created_id = created.id,
+          }
+          reload_ideas()
+        elseif create_error == "source_already_registered" and existing then
+          draft_guid = existing.source_item_guid
+          draft_name = ""
+          draft_dirty = false
+          highlighted_id = existing.id
+          feedback = { text = "Already an Idea: " .. existing.name .. "." }
+        else
+          feedback = { text = idea_error_message(create_error) }
+        end
+      end
+
+      if feedback then
+        ImGui.TextWrapped(context, feedback.text)
+      end
+
+      ImGui.Separator(context)
+      ImGui.Text(context, "Ideas")
+      if view_error then
+        ImGui.TextWrapped(context, idea_error_message(view_error))
+      elseif #idea_view.ideas == 0 then
+        ImGui.TextDisabled(context, "No Ideas yet.")
+      else
+        for _, current in ipairs(idea_view.ideas) do
+          local selected_prefix = (current.selected or current.id == highlighted_id)
+              and "Selected Idea: "
+            or ""
+          ImGui.Text(context, selected_prefix .. current.name)
+          if current.source_status == "missing" then
+            ImGui.TextWrapped(context, "Source item missing.")
+          elseif current.source_status == "ambiguous" then
+            ImGui.TextWrapped(context, "Several items share this source identity.")
+          else
+            ImGui.TextDisabled(
+              context,
+              "Source: " .. current.source_name .. " (" .. current.source_kind .. ")"
+            )
+            ImGui.TextDisabled(context, "Track: " .. current.track_name)
+            ImGui.TextDisabled(
+              context,
+              "Position: " .. current.position_text .. ", duration: " .. current.duration_text
+            )
+            if current.track_hidden then
+              ImGui.TextWrapped(context, "Source track is hidden.")
+            end
+            if current.source_status == "unavailable" then
+              ImGui.TextWrapped(context, "Source media is unavailable.")
+            end
+          end
+
+          ImGui.BeginDisabled(
+            context,
+            not access.can_mutate
+              or current.source_status == "missing"
+              or current.source_status == "ambiguous"
+          )
+          if ImGui.Button(context, "Select source###select_" .. current.id) then
+            local selected, select_error = ideas.select_source(
+              bound_project,
+              current.source_item_guid
+            )
+            if selected then
+              highlighted_id = current.id
+              feedback = { text = "Selected source for " .. current.name .. "." }
+              reload_ideas()
+            else
+              feedback = { text = idea_error_message(select_error) }
+            end
+          end
+          ImGui.EndDisabled(context)
+        end
+      end
     end
 
     ImGui.End(context)
@@ -137,7 +420,7 @@ local function main()
   assert(script_dir, "HIT must run from a saved script")
 
   package.path = script_dir .. "?.lua;" .. script_dir .. "?/init.lua;" .. package.path
-  start(require("hit.lifecycle"))
+  start(require("hit.lifecycle"), require("hit.reaper.ideas"))
 end
 
 local ok, trace = xpcall(main, debug.traceback)
