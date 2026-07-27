@@ -176,6 +176,47 @@ HIT Split is the only Victory 2 classification command that changes Source Item 
 
 Ordinary REAPER splits remain musician-owned. The adapter compares project revisions and item topology, requiring adjacency, matching active-take source, compatible source offsets and the shortened known boundary before exposing a candidate. Recovery never attaches automatically.
 
+## Victory 3 generation flow
+
+```text
+ReaImGui Generate view
+        ↓ Target Bars and seed
+Generation application service
+        ↓ current Grammar, Source Palette and measure facts
+Pure passage generator
+        ↓ explicit deterministic Phrase Sequence
+REAPER Build adapter
+        ↓ one native undo transaction
+V3 metadata, generated folders, two lanes and independent item copies
+```
+
+The generator uses plain Lua data. REAPER supplies source facts, cursor-relative measure boundaries and materialisation operations through the adapter.
+
+Victory 3 adds `P_EXT:HIT_STATE_V3` beside unchanged V1 and V2 state. V3 persists Composition, Occurrence, Suggestion, explicit Phrase Sequence, Target Duration, anchor, seed, compiler version and Build provenance. Generated tracks and items carry stable role and source metadata; their names remain descriptive.
+
+Generated project layout:
+
+```text
+GENERATED DEMO
+├── Build 001 [muted]
+│   ├── Lane A
+│   └── Lane B
+├── Build 002 [muted]
+│   ├── Lane A
+│   └── Lane B
+└── Build 003 [audible]
+    ├── Lane A
+    └── Lane B
+```
+
+Each Build folder snapshots FX, volume, pan and width from the available Default Main source track, another available Main when the default is Gone, or the first generated phrase when no Main remains. It does not copy source media, routing, automation, recording state or folder state. Phrase items alternate between the two lanes; permitted overlaps occupy both.
+
+Generated audio items receive independent item and take identity while referring to the same media source. Generated MIDI items are unpooled independent copies. Generated items clear arrangement-only mute, lock, group and selection state, while retaining audible item and take properties.
+
+Manual edits to a Build are not synchronised into V3 state. Stable item provenance supports a later explicit Develop This scan, as recorded in ADR 0002.
+
+Generation creates all V3 metadata, folders, processing, items and older-Build mute changes inside one native undo transaction. Failure removes partial output and restores previous V3 bytes and mute states.
+
 ## Non-destructive generation
 
 Every generated item must carry a Build identity.

@@ -73,7 +73,7 @@ local function load_imgui()
   return result
 end
 
-local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items)
+local function start(lifecycle, ideas, grammar_adapter, grammar_ui, generation_adapter, generation_ui, source_items)
   local support = lifecycle.host_support(app.GetAppVersion(), app.APIExists("ImGui_GetBuiltinPath"))
 
   if not support.ok then
@@ -115,6 +115,9 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items
   local grammar_idea_id
   local grammar_view
   local grammar_state = {}
+  local generation_idea_id
+  local generation_view
+  local generation_state = {}
 
   local function initial_grammar_state(loaded_grammar)
     local state = { selected_family = "Main" }
@@ -192,6 +195,10 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items
         }
       end
     end
+
+    if generation_idea_id then
+      generation_view = generation_adapter.open(bound_project, generation_idea_id)
+    end
   end
 
   local function frame()
@@ -234,8 +241,8 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items
     end
 
     ImGui.PushFont(context, nil, FONT_SIZE)
-    local grammar_theme = grammar_idea_id and grammar_view
-    if grammar_theme then
+    local detailed_view = (grammar_idea_id and grammar_view) or (generation_idea_id and generation_view)
+    if detailed_view then
       grammar_ui.push_theme(ImGui, context)
     end
     if focus then
@@ -243,11 +250,38 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items
       focus = false
     end
     ImGui.SetNextWindowSize(context, 760, 720, ImGui.Cond_FirstUseEver)
+    local window_flags = generation_idea_id and ImGui.WindowFlags_AlwaysAutoResize or 0
+    local visible_view = grammar_idea_id and "Phrases" or generation_idea_id and "Generate" or "Ideas"
     local visible
-    visible, open = ImGui.Begin(context, "HIT - " .. project_name .. "###HIT", open)
+    visible, open =
+      ImGui.Begin(context, "HIT - " .. project_name .. " - " .. visible_view .. "###HIT", open, window_flags)
 
     if visible then
-      if grammar_idea_id and grammar_view then
+      if generation_idea_id and generation_view then
+        if ImGui.Button(context, "Back to Ideas") then
+          generation_idea_id = nil
+          generation_view = nil
+          generation_state = {}
+        else
+          ImGui.SameLine(context)
+          local generation_status = generation_view.classified and "Classified" or "Main unavailable"
+          ImGui.Text(context, (generation_view.name or "Unavailable Idea") .. " · Generate · " .. generation_status)
+          local function execute_generation(target_bars, seed)
+            if not access.can_mutate then
+              return nil, "project_inactive"
+            end
+            local next_view, command_error =
+              generation_adapter.execute(bound_project, generation_idea_id, target_bars, seed)
+            if next_view then
+              generation_view = next_view
+              loaded_revision = app.GetProjectStateChangeCount(bound_project)
+            end
+            return next_view, command_error
+          end
+          generation_view =
+            generation_ui.draw(ImGui, context, generation_view, generation_state, access.can_mutate, execute_generation)
+        end
+      elseif grammar_idea_id and grammar_view then
         local selected_source_guid = candidate and candidate.source_item_guid
         if selected_source_guid and grammar_state.reaper_source_guid ~= selected_source_guid then
           grammar_ui.select_source_variant(grammar_view, grammar_state, selected_source_guid)
@@ -457,13 +491,21 @@ local function start(lifecycle, ideas, grammar_adapter, grammar_ui, source_items
                 }
               grammar_state = initial_grammar_state(grammar_view)
             end
+            ImGui.SameLine(context)
+            if ImGui.Button(context, "Generate###generate_" .. current.id) then
+              generation_idea_id = current.id
+              generation_view = generation_adapter.open(bound_project, current.id)
+              generation_state = {
+                target_bars = generation_view.target_bars,
+                seed = generation_view.seed,
+              }
+            end
           end
         end
       end
+      ImGui.End(context)
     end
-
-    ImGui.End(context)
-    if grammar_theme then
+    if detailed_view then
       grammar_ui.pop_theme(ImGui, context)
     end
     ImGui.PopFont(context)
@@ -496,6 +538,8 @@ local function main()
     require("hit.reaper.ideas"),
     require("hit.reaper.grammar"),
     require("hit.ui.imgui.grammar"),
+    require("hit.reaper.generation"),
+    require("hit.ui.imgui.generate"),
     require("hit.reaper.source_items")
   )
 end

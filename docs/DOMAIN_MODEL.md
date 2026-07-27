@@ -62,7 +62,7 @@ Every non-empty Phrase Family has exactly one Default Variant. One source item m
 
 An unsplit Idea begins as Main A. Main does not imply loopability, so a complete through-composed section remains valid without a special type.
 
-Variant Intensity describes the relative character of one recording. It does not choose phrases or define a passage-level Energy journey in Victory 2.
+Variant Intensity describes the relative character of one recording. It does not choose phrases or define a passage-level Energy journey in Victory 3.
 
 ## Source reference
 
@@ -83,6 +83,24 @@ Item Bundles are not required for Victory 2. Adding several selected items creat
 One appearance of an Idea in a Composition.
 
 Occurrences share the Idea's identity but may differ in duration, phrase sequence, context, overlap, target intention and variation level.
+
+Victory 3 uses one Composition containing one Occurrence. Passage is player-facing language for this longer result, not another domain entity.
+
+## Source palette
+
+The Variants whose Source References resolve to exact REAPER items when a Suggestion is generated.
+
+Every member is eligible, but none is required. An item with offline media remains in the Source Palette. A Gone Source, whose item no longer exists, does not.
+
+## Target duration
+
+A loose whole-bar preference for the entire audible Phrase Sequence. It guides exploration without permitting the compiler to trim or stretch Source Media.
+
+## Phrase sequence
+
+An ordered, grammar-valid choice and placement of Variants for one Occurrence.
+
+The sequence records Variant identity, timing and optional overlap. It is explicit Suggestion data rather than an inference from generated media.
 
 ## Evolution
 
@@ -208,6 +226,8 @@ A proposed Composition or revision generated from the available source material,
 
 A Suggestion must be explainable. It should state the important structural decisions and why they were proposed.
 
+Victory 3 Suggestions also record their deterministic seed, compiler version, Source Palette and explicit Phrase Sequence. Intensity does not influence their generation.
+
 ## Build
 
 A reproducible materialisation of a Composition into the REAPER timeline.
@@ -220,6 +240,10 @@ A Build has an identity and should be traceable to:
 - deterministic seed;
 - generated items;
 - analysis results.
+
+Victory 3 keeps each Build in one muteable folder containing two alternating phrase lanes. A newer Build mutes older managed Builds without deleting them.
+
+Generated media remains ordinary REAPER material. Musician edits are canonical within that Build and are not repaired or synchronised back into the Composition. A later Develop This workflow may scan the edited Build into a new Composition revision.
 
 ## Demo compiler
 
